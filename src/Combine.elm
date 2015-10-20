@@ -158,10 +158,24 @@ optional : Parser res -> res -> Parser res
 optional p res =
   p `or` succeed res
 
+{-| Join two parsers, ignoring the result of the one on the right.
+
+    unsuffix : Parser String
+    unsuffix = regex "[a-z]" <* regex "[!?]"
+
+    -- parse unsuffix "a!" == (Done "a", { input = "" })
+ -}
 (<*) : Parser res -> Parser x -> Parser res
 (<*) lp rp =
   map always lp `and` rp
 
+{-| Join two parsers, ignoring the result of the one on the left.
+
+    unprefix : Parser String
+    unprefix = string ">" *> while ((==) ' ') *> while ((/=) ' ')
+
+    -- parse unprefix "> a" == (Done "a", { input = "" })
+ -}
 (*>) : Parser x -> Parser res -> Parser res
 (*>) lp rp =
   map (flip always) lp `and` rp
