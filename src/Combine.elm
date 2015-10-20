@@ -119,16 +119,16 @@ string s =
     then (Done s, {c | input <- String.dropLeft (String.length s) c.input })
     else (Fail ("expected '" ++ s ++ "'"), c)
 
-regex : Regex -> Parser String
-regex r =
+regex : String -> Parser String
+regex pattern =
   Parser <| \c ->
-    case Regex.find (Regex.AtMost 1) r c.input of
+    case Regex.find (Regex.AtMost 1) (Regex.regex pattern) c.input of
       [match] ->
         let rem = String.dropLeft (match.index + (String.length match.match)) c.input
         in (Done match.match, {c | input <- rem })
 
       _ ->
-        (Fail ("expected '" ++ (toString r) ++ "'"), c)
+        (Fail ("expected pattern matching /" ++ pattern ++ "/"), c)
 
 while : (Char -> Bool) -> Parser String
 while p =
