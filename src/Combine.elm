@@ -44,6 +44,16 @@ andMap rp lp =
       (Fail m, c) ->
         (Fail m, c)
 
+andThen : Parser res -> (res -> Parser res') -> Parser res'
+andThen p f =
+  Parser <| \c ->
+    case app p c of
+      (Done res, c) ->
+        app (f res) c
+
+      (Fail m, c) ->
+        (Fail m, c)
+
 and : Parser (res -> res') -> Parser res -> Parser res'
 and lp rp =
   andMap rp lp
