@@ -21,7 +21,7 @@ module Combine ( Parser(..), ParseFn, Context, Result(..)
 
 # Parsers
 @docs fail, succeed, string, regex, while, end, or, choice, optional, many, many1, (<|>)
- -}
+-}
 
 import Lazy as L
 import String
@@ -35,10 +35,15 @@ type alias Context =
   }
 
 
-{-| The Result of running a parser. -}
+{-| Running a `Parser` results in one of two states:
+
+* `Done` when the parser has successfully parsed the input (or part of
+it) to a result, or
+* `Fail` when the parser has failed with a list of error messages.
+-}
 type Result res
   = Done res
-  | Fail String
+  | Fail (List String)
 
 
 {-| At their core, Parsers are functions from a `Context` to a
@@ -52,7 +57,7 @@ tuple of a `Result` and a new `Context`.
 
     parse myParser "a" == \
       (Done 1, { input = "a", position = 0 })
- -}
+-}
 type alias ParseFn res =
   Context -> (Result res, Context)
 
@@ -94,7 +99,7 @@ parse p input = app p { input = input, position = 0 }
     list = rec (\() -> EList `map` (string "(" *> many (term `or` list) <* string ")"))
 
     parse list "" == \
-      (Fail "expected '('", { input = "", position = 0 })
+      (Fail ["expected '('"], { input = "", position = 0 })
 
     parse list "()" == \
       (Done (EList []), { input = "", position = 2 })
@@ -102,7 +107,7 @@ parse p input = app p { input = input, position = 0 }
     parse list "(a (b c))" == \
       (Done (EList [ETerm "a", EList [ETerm "b", ETerm "c"]]) \
       , { input = "", position = 9 })
- -}
+-}
 rec : (() -> Parser res) -> Parser res
 rec t =
   RecursiveParser << L.lazy <| \() -> app (t ())
@@ -110,7 +115,7 @@ rec t =
 
 {-| Transform both the result and error message of a parser. -}
 bimap : (res -> res')
-      -> (String -> String)
+      -> (List String -> List String)
       -> Parser res
       -> Parser res'
 bimap fok ferr p =
@@ -127,7 +132,7 @@ bimap fok ferr p =
 
     parse (map String.toUpper (string "a")) "a" == \
       (Done "A", { input = "", position = 1 })
- -}
+-}
 map : (res -> res') -> Parser res -> Parser res'
 map f p = bimap f identity p
 
@@ -164,7 +169,7 @@ andThen p f =
 
     parse sum "1+2" == \
       (Done 3, { input = "", position = 3 })
- -}
+-}
 andMap : Parser (res -> res') -> Parser res -> Parser res'
 andMap lp rp =
   lp
@@ -178,7 +183,7 @@ andMap lp rp =
     unsuffix = regex "[a-z]" <* regex "[!?]"
 
     parse unsuffix "a!" == (Done "a", { input = "", position = 2 })
- -}
+-}
 (<*) : Parser res -> Parser x -> Parser res
 (<*) lp rp =
   always `map` lp `andMap` rp
@@ -190,24 +195,24 @@ andMap lp rp =
     unprefix = string ">" *> while ((==) ' ') *> while ((/=) ' ')
 
     parse unprefix "> a" == (Done "a", { input = "", position = 3 })
- -}
+-}
 (*>) : Parser x -> Parser res -> Parser res
 (*>) lp rp =
   (flip always) `map` lp `andMap` rp
 
 
 {-| Fail without consuming any input. -}
-fail : String -> Parser res
-fail m =
+fail : List String -> Parser res
+fail ms =
   Parser <| \c ->
-    (Fail m, c)
+    (Fail ms, c)
 
 
 {-| Return a value without consuming any input.
 
     parse (succeed 1) "a" == \
       (Done 1, { input = "a", position = 0 })
- -}
+-}
 succeed : res -> Parser res
 succeed r =
   Parser <| \c ->
@@ -220,8 +225,8 @@ succeed r =
       (Done "hello", { input = " world", position = 5 })
 
     parse (string "hello") "goodbye" == \
-      (Fail "expected 'hello'", { input = "goodbye", position = 0 })
- -}
+      (Fail ["expected 'hello'"], { input = "goodbye", position = 0 })
+-}
 string : String -> Parser String
 string s =
   Parser <| \c ->
@@ -232,7 +237,7 @@ string s =
         rem = String.dropLeft len c.input
         pos = c.position + len
       in (Done s, {c | input <- rem, position <- pos})
-    else (Fail ("expected '" ++ s ++ "'"), c)
+    else (Fail ["expected '" ++ s ++ "'"], c)
 
 
 {-| Parse a Regex match.
@@ -243,7 +248,7 @@ every pattern unless one already exists.
 
     parse (regex "a+") "aaaaab" == \
       (Done "aaaaa", { input = "b", position = 5 })
- -}
+-}
 regex : String -> Parser String
 regex pattern =
   let
@@ -262,14 +267,14 @@ regex pattern =
         in (Done match.match, {c | input <- rem, position <- pos })
 
       _ ->
-        (Fail ("expected input matching Regexp /" ++ pattern' ++ "/"), c)
+        (Fail ["expected input matching Regexp /" ++ pattern' ++ "/"], c)
 
 
 {-| Consume input while the predicate matches.
 
     parse (while ((/=) ' ')) "test 123" == \
       (Done "test", { input = " 123", position = 4 })
- -}
+-}
 while : (Char -> Bool) -> Parser String
 while pred =
   let
@@ -295,14 +300,14 @@ while pred =
 {-| Fail when the input is not empty.
 
     parse end "" == (Done (), { input = "", position = 0 })
-    parse end "a" == (Fail "expected end of input", { input = "a", position = 0 })
- -}
+    parse end "a" == (Fail ["expected end of input"], { input = "a", position = 0 })
+-}
 end : Parser ()
 end =
   Parser <| \c ->
     if c.input == ""
     then (Done (), c)
-    else (Fail "expected end of input", c)
+    else (Fail ["expected end of input"], c)
 
 
 {-| Choose between two parsers.
@@ -314,8 +319,8 @@ end =
       (Done "b", { input = "", position = 1 })
 
     parse (string "a" `or` string "b") "c" == \
-      (Fail "expected 'a' or expected 'b'", { input = "c", position = 0 })
- -}
+      (Fail ["expected 'a' or expected 'b'"], { input = "c", position = 0 })
+-}
 or : Parser res -> Parser res -> Parser res
 or lp rp =
   Parser <| \c ->
@@ -332,7 +337,7 @@ or lp rp =
             res'
 
           (Fail rm, _) ->
-            (Fail (lm ++ " or " ++ rm), c)
+            (Fail (lm ++ rm), c)
 
 {-| Synonym for `or`. -}
 (<|>) : Parser res -> Parser res -> Parser res
@@ -346,10 +351,10 @@ or lp rp =
 
     parse (choice [string "a", string "b"]) "b" == \
       (Done "b", { input = "", position = 1 })
- -}
+-}
 choice : List (Parser res) -> Parser res
 choice xs =
-  List.foldr or (fail "choice") xs
+  List.foldr or (fail []) xs
 
 
 {-| Return a default value when the given parser fails.
@@ -359,7 +364,7 @@ choice xs =
 
     parse letterA "a" == (Done "a", { input = "", position = 1 })
     parse letterA "b" == (Done "a", { input = "b", position = 0 })
- -}
+-}
 optional : Parser res -> res -> Parser res
 optional p res =
   p `or` succeed res
@@ -372,7 +377,7 @@ optional p res =
 
     parse (many (string "a")) "" == \
       (Done [], { input = "", position = 0 })
- -}
+-}
 many : Parser res -> Parser (List res)
 many p =
   let
@@ -395,8 +400,8 @@ many p =
       (Done ["a"], { input = "", position = 1 })
 
     parse (many1 (string "a")) "" == \
-      (Fail "expected 'a'", { input = "", position = 0 })
- -}
+      (Fail ["expected 'a'"], { input = "", position = 0 })
+-}
 many1 : Parser res -> Parser (List res)
 many1 p =
   (::) `map` p `andMap` many p
