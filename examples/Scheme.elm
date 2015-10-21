@@ -53,7 +53,8 @@ comment : Parser E
 comment = EComment <$> regex ";[^\n]+"
 
 bool : Parser E
-bool = EBool <$> ((True <$ string "#t") `or` (False <$ string "#f"))
+bool = EBool <$> choice [ True  <$ string "#t"
+                        , False <$ string "#f" ]
 
 sign : Parser Int
 sign = optional 1 (choice [  1 <$ string "+"
@@ -123,9 +124,8 @@ unquoteSplice = EUnquoteSplice <$> (string ",@" *> expr)
 expr : Parser E
 expr =
   rec (\() ->
-    let parsers = [ bool, num , char, str , identifier , list, vector
-                  , quote, quasiquote, unquote, unquoteSplice, comment
-                  ]
+    let parsers = [ bool, num , char, str, identifier, list, vector
+                  , quote, quasiquote, unquote, unquoteSplice, comment ]
     in whitespace *> choice parsers <* whitespace)
 
 parse : String -> Result.Result String (List E)
