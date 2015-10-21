@@ -1,6 +1,6 @@
 module Combine ( Parser(..), ParseFn, Context, Result(..)
                , parse, app, rec
-               , bimap, map, (<$>)
+               , bimap, map, mapError, (<$>), (<?>)
                , andThen, andMap, (*>), (<*)
                , fail, succeed, string, regex, while, end
                , or, choice, optional, many, many1, (<|>)
@@ -14,7 +14,7 @@ module Combine ( Parser(..), ParseFn, Context, Result(..)
 @docs parse, app, rec
 
 # Transforming Parsers
-@docs bimap, map, (<$>)
+@docs bimap, map, mapError, (<$>), (<?>)
 
 # Chaining Parsers
 @docs andThen, andMap, (*>), (<*)
@@ -137,9 +137,28 @@ map : (res -> res') -> Parser res -> Parser res'
 map f p = bimap f identity p
 
 
+{-| Transform the error of a parser.
+
+    parse (mapError (\_ -> ["bad input"]) (string "a")) "b" == \
+      (Fail ["bad input"], { input = "b", position = 0 })
+-}
+mapError : (List String -> List String) -> Parser res -> Parser res
+mapError = bimap identity
+
+
 {-| Synonym for `map`. -}
 (<$>) : (res -> res') -> Parser res -> Parser res'
 (<$>) = map
+
+
+{-| Variant of `mapError` that replaces the Parser's error with a List
+of a single string.
+
+    parse (string "a" <?> "gimme an 'a'") "b" == \
+      (Fail ["gimme an 'a'"], { input = "b", position = 0 })
+-}
+(<?>) : Parser res -> String -> Parser res
+(<?>) p m = mapError (\_ -> [m]) p
 
 
 {-| Sequence two parsers by passing in the results of the first parser
