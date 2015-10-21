@@ -5,14 +5,19 @@ import Debug
 import String
 
 type E
-  = EInt Int
+  = EBool Bool
+  | EInt Int
   | EFloat Float
+  | EChar Char
   | EString String
-  | EName String
+  | EIdentifier String
   | EList (List E)
+  | EVector (List E)
   | EQuote E
   | EQuasiquote E
   | EUnquote E
+  | EUnquoteSplice E
+  | EComment String
 
 undefined : a
 undefined = undefined
@@ -32,8 +37,23 @@ toInt = unwrap String.toInt
 toFloat : String -> Float
 toFloat = unwrap String.toFloat
 
+toChar : String -> Char
+toChar s =
+  case String.uncons s of
+    Just (c, _) ->
+      c
+
+    Nothing ->
+      undefined
+
 whitespace : Parser String
 whitespace = regex "[ \t\r\n]*"
+
+comment : Parser E
+comment = EComment <$> regex ";[^\n]+"
+
+bool : Parser E
+bool = EBool <$> ((True <$ string "#t") `or` (False <$ string "#f"))
 
 sign : Parser Int
 sign = optional 1 (choice [  1 <$ string "+"
@@ -57,14 +77,36 @@ num =
         EFloat n ->
           succeed (EFloat ((Basics.toFloat x) * n))
 
+char : Parser E
+char = EChar <$> (string "#\\" *> (choice [ ' '  <$ string "space"
+                                          , '\n' <$ string "newline"
+                                          , toChar <$> regex "." ]))
+
 str : Parser E
 str = EString <$> regex "\"(\\\"|[^\"])+\""
 
-name : Parser E
-name = EName <$> regex "[a-zA-Z-_+][a-zA-Z0-9-_+]*"
+identifier : Parser E
+identifier =
+  let
+    letter = "a-zA-Z"
+    specialInitial = "!$%&*/:<=>?^_~+\\-"
+    initial = letter ++ specialInitial
+    initialRe = "[" ++ initial ++ "]"
+
+    digit = "0-9"
+    specialSubsequent = ".@+\\-"
+    subsequent = initial ++ digit ++ specialSubsequent
+    subsequentRe = "[" ++ subsequent ++ "]*"
+
+    identifierRe = initialRe ++ subsequentRe
+  in
+  EIdentifier <$> regex identifierRe
 
 list : Parser E
 list = EList <$> (string "(" *> many expr <* string ")")
+
+vector : Parser E
+vector = EVector <$> (string "#(" *> many expr <* string ")")
 
 quote : Parser E
 quote = EQuote <$> (string "'" *> expr)
@@ -75,10 +117,15 @@ quasiquote = EQuasiquote <$> (string "`" *> expr)
 unquote : Parser E
 unquote = EUnquote <$> (string "," *> expr)
 
+unquoteSplice : Parser E
+unquoteSplice = EUnquoteSplice <$> (string ",@" *> expr)
+
 expr : Parser E
 expr =
   rec (\() ->
-    let parsers = [ num , str , name , list , quote, quasiquote, unquote ]
+    let parsers = [ bool, num , char, str , identifier , list, vector
+                  , quote, quasiquote, unquote, unquoteSplice, comment
+                  ]
     in whitespace *> choice parsers <* whitespace)
 
 parse : String -> Result.Result String (List E)
@@ -88,4 +135,4 @@ parse s =
       Ok e
 
     (Fail ms, c) ->
-      Err (toString ms)
+      Err ("Parse error on input: " ++ (toString c.input) ++ ". Errors: " ++ (toString ms))
