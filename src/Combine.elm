@@ -1,4 +1,10 @@
-module Combine where
+module Combine ( Parser(..), ParseFn, Context, Result(..)
+               , parse, app, rec
+               , bimap, map, (<$>)
+               , andThen, andMap, (*>), (<*)
+               , fail, succeed, string, regex, while, end
+               , or, choice, optional, many, many1, (<|>)
+               ) where
 
 {-| This library provides reasonably fast parser combinators.
 
@@ -8,13 +14,13 @@ module Combine where
 @docs parse, app, rec
 
 # Transforming Parsers
-@docs bimap, map
+@docs bimap, map, (<$>)
 
 # Chaining Parsers
 @docs andThen, andMap, (*>), (<*)
 
 # Parsers
-@docs fail, succeed, string, regex, while, end, or, choice, optional, many, many1
+@docs fail, succeed, string, regex, while, end, or, choice, optional, many, many1, (<|>)
  -}
 
 import Lazy as L
@@ -124,6 +130,11 @@ bimap fok ferr p =
  -}
 map : (res -> res') -> Parser res -> Parser res'
 map f p = bimap f identity p
+
+
+{-| Synonym for `map`. -}
+(<$>) : (res -> res') -> Parser res -> Parser res'
+(<$>) = map
 
 
 {-| Sequence two parsers by passing in the results of the first parser
@@ -322,6 +333,10 @@ or lp rp =
 
           (Fail rm, _) ->
             (Fail (lm ++ " or " ++ rm), c)
+
+{-| Synonym for `or`. -}
+(<|>) : Parser res -> Parser res -> Parser res
+(<|>) = or
 
 
 {-| Choose between a list of parsers.
