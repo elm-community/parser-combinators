@@ -1,6 +1,6 @@
 module Combine ( Parser(..), ParseFn, Context, Result(..)
                , parse, app, rec
-               , bimap, map, mapError, (<$>), (<?>)
+               , bimap, map, mapError, (<$>), (<$), (<?>)
                , andThen, andMap, (*>), (<*)
                , fail, succeed, char, string, regex, while, end
                , or, choice, optional, many, many1, (<|>)
@@ -14,7 +14,7 @@ module Combine ( Parser(..), ParseFn, Context, Result(..)
 @docs parse, app, rec
 
 # Transforming Parsers
-@docs bimap, map, mapError, (<$>), (<?>)
+@docs bimap, map, mapError, (<$>), (<$), (<?>)
 
 # Chaining Parsers
 @docs andThen, andMap, (*>), (<*)
@@ -149,6 +149,10 @@ mapError = bimap identity
 {-| Synonym for `map`. -}
 (<$>) : (res -> res') -> Parser res -> Parser res'
 (<$>) = map
+
+{-| Variant of `map` that ignores the Parser's result. -}
+(<$) : res -> Parser x -> Parser res
+(<$) res = map (\_ -> res)
 
 
 {-| Variant of `mapError` that replaces the Parser's error with a List
