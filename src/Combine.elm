@@ -400,13 +400,13 @@ choice xs =
 {-| Return a default value when the given parser fails.
 
     letterA : Parser String
-    letterA = optional (string "a") "a"
+    letterA = optional "a" (string "a")
 
     parse letterA "a" == (Done "a", { input = "", position = 1 })
     parse letterA "b" == (Done "a", { input = "b", position = 0 })
 -}
-optional : Parser res -> res -> Parser res
-optional p res =
+optional : res -> Parser res -> Parser res
+optional res p =
   p `or` succeed res
 
 
