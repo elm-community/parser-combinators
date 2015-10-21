@@ -4,6 +4,7 @@
     "repository": "https://github.com/Bogdanp/elm-combine.git",
     "license": "BSD3",
     "source-directories": [
+        "examples",
         "src"
     ],
     "exposed-modules": [
