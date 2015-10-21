@@ -1,25 +1,58 @@
 module Combine where
 
+{-| This library provides reasonably fast parser combinators.
+
+@docs Parser, ParseFn, Context, Result
+
+# Running a Parser
+@docs parse, app, rec
+
+# Transforming Parsers
+@docs bimap, map
+
+# Chaining Parsers
+@docs andThen, andMap, (*>), (<*)
+
+# Parsers
+@docs fail, succeed, string, regex, while, end, or, choice, optional, many, many1
+ -}
+
 import Lazy as L
 import String
 import Regex exposing (Regex(..))
 
 
+{-| The contex over which `ParseFn`s operate. -}
 type alias Context =
   { input : String
   , position : Int
   }
 
 
+{-| The Result of running a parser. -}
 type Result res
   = Done res
   | Fail String
 
 
+{-| At their core, Parsers are functions from a `Context` to a
+tuple of a `Result` and a new `Context`.
+
+    myParseFn : ParseFn Int
+    myParseFn c = (Done 1, c)
+
+    myParser : Parser Int
+    myParser = Parser myParseFn
+
+    parse myParser "a" == \
+      (Done 1, { input = "a", position = 0 })
+ -}
 type alias ParseFn res =
   Context -> (Result res, Context)
 
 
+{-| A wrapper type around `ParseFn`s used to differentiate between
+eager and lazy parsers. -}
 type Parser res
   = Parser (ParseFn res)
   | RecursiveParser (L.Lazy (ParseFn res))
@@ -94,8 +127,7 @@ map f p = bimap f identity p
 
 
 {-| Sequence two parsers by passing in the results of the first parser
-to the second.
- -}
+to the second. -}
 andThen : Parser res -> (res -> Parser res') -> Parser res'
 andThen p f =
   Parser <| \c ->
@@ -129,84 +161,28 @@ andMap lp rp =
     `andThen` \x -> succeed (f x)
 
 
-{-| Choose between two parsers.
+{-| Join two parsers, ignoring the result of the one on the right.
 
-    parse (string "a" `or` string "b") "a" == \
-      (Done "a", { input = "", position = 1 })
+    unsuffix : Parser String
+    unsuffix = regex "[a-z]" <* regex "[!?]"
 
-    parse (string "a" `or` string "b") "b" == \
-      (Done "b", { input = "", position = 1 })
-
-    parse (string "a" `or` string "b") "c" == \
-      (Fail "expected 'a' or expected 'b'", { input = "c", position = 0 })
+    parse unsuffix "a!" == (Done "a", { input = "", position = 2 })
  -}
-or : Parser res -> Parser res -> Parser res
-or lp rp =
-  Parser <| \c ->
-    let res = app lp c in
-    case res of
-      (Done _, _) ->
-        res
-
-      (Fail lm, _) ->
-        -- XXX: res' to avoid dynamic scoping issue in compiled JS.
-        let res' = app rp c in
-        case res' of
-          (Done _, _) ->
-            res'
-
-          (Fail rm, _) ->
-            (Fail (lm ++ " or " ++ rm), c)
+(<*) : Parser res -> Parser x -> Parser res
+(<*) lp rp =
+  always `map` lp `andMap` rp
 
 
-{-| Choose between a list of parsers.
+{-| Join two parsers, ignoring the result of the one on the left.
 
-    parse (choice [string "a", string "b"]) "a" == \
-      (Done "a", { input = "", position = 1 })
+    unprefix : Parser String
+    unprefix = string ">" *> while ((==) ' ') *> while ((/=) ' ')
 
-    parse (choice [string "a", string "b"]) "b" == \
-      (Done "b", { input = "", position = 1 })
+    parse unprefix "> a" == (Done "a", { input = "", position = 3 })
  -}
-choice : List (Parser res) -> Parser res
-choice xs =
-  List.foldr or (fail "choice") xs
-
-
-{-| Apply a parser until it fails and return a list of the results.
-
-    parse (many (string "a")) "aaab" == \
-      (Done ["a", "a", "a"], { input = "b", position = 3 })
-
-    parse (many (string "a")) "" == \
-      (Done [], { input = "", position = 0 })
- -}
-many : Parser res -> Parser (List res)
-many p =
-  let
-    accumulate acc c =
-      case app p c of
-        (Done res, c) ->
-          accumulate (res :: acc) c
-
-        _ ->
-          (List.reverse acc, c)
-  in
-    Parser <| \cx ->
-      let (res, c) = accumulate [] cx in
-      (Done res, c)
-
-
-{-| Parse at least one result.
-
-    parse (many1 (string "a")) "a" == \
-      (Done ["a"], { input = "", position = 1 })
-
-    parse (many1 (string "a")) "" == \
-      (Fail "expected 'a'", { input = "", position = 0 })
- -}
-many1 : Parser res -> Parser (List res)
-many1 p =
-  (::) `map` p `andMap` many p
+(*>) : Parser x -> Parser res -> Parser res
+(*>) lp rp =
+  (flip always) `map` lp `andMap` rp
 
 
 {-| Fail without consuming any input. -}
@@ -318,6 +294,49 @@ end =
     else (Fail "expected end of input", c)
 
 
+{-| Choose between two parsers.
+
+    parse (string "a" `or` string "b") "a" == \
+      (Done "a", { input = "", position = 1 })
+
+    parse (string "a" `or` string "b") "b" == \
+      (Done "b", { input = "", position = 1 })
+
+    parse (string "a" `or` string "b") "c" == \
+      (Fail "expected 'a' or expected 'b'", { input = "c", position = 0 })
+ -}
+or : Parser res -> Parser res -> Parser res
+or lp rp =
+  Parser <| \c ->
+    let res = app lp c in
+    case res of
+      (Done _, _) ->
+        res
+
+      (Fail lm, _) ->
+        -- XXX: res' to avoid dynamic scoping issue in compiled JS.
+        let res' = app rp c in
+        case res' of
+          (Done _, _) ->
+            res'
+
+          (Fail rm, _) ->
+            (Fail (lm ++ " or " ++ rm), c)
+
+
+{-| Choose between a list of parsers.
+
+    parse (choice [string "a", string "b"]) "a" == \
+      (Done "a", { input = "", position = 1 })
+
+    parse (choice [string "a", string "b"]) "b" == \
+      (Done "b", { input = "", position = 1 })
+ -}
+choice : List (Parser res) -> Parser res
+choice xs =
+  List.foldr or (fail "choice") xs
+
+
 {-| Return a default value when the given parser fails.
 
     letterA : Parser String
@@ -331,25 +350,38 @@ optional p res =
   p `or` succeed res
 
 
-{-| Join two parsers, ignoring the result of the one on the right.
+{-| Apply a parser until it fails and return a list of the results.
 
-    unsuffix : Parser String
-    unsuffix = regex "[a-z]" <* regex "[!?]"
+    parse (many (string "a")) "aaab" == \
+      (Done ["a", "a", "a"], { input = "b", position = 3 })
 
-    parse unsuffix "a!" == (Done "a", { input = "", position = 2 })
+    parse (many (string "a")) "" == \
+      (Done [], { input = "", position = 0 })
  -}
-(<*) : Parser res -> Parser x -> Parser res
-(<*) lp rp =
-  always `map` lp `andMap` rp
+many : Parser res -> Parser (List res)
+many p =
+  let
+    accumulate acc c =
+      case app p c of
+        (Done res, c) ->
+          accumulate (res :: acc) c
+
+        _ ->
+          (List.reverse acc, c)
+  in
+    Parser <| \cx ->
+      let (res, c) = accumulate [] cx in
+      (Done res, c)
 
 
-{-| Join two parsers, ignoring the result of the one on the left.
+{-| Parse at least one result.
 
-    unprefix : Parser String
-    unprefix = string ">" *> while ((==) ' ') *> while ((/=) ' ')
+    parse (many1 (string "a")) "a" == \
+      (Done ["a"], { input = "", position = 1 })
 
-    parse unprefix "> a" == (Done "a", { input = "", position = 3 })
+    parse (many1 (string "a")) "" == \
+      (Fail "expected 'a'", { input = "", position = 0 })
  -}
-(*>) : Parser x -> Parser res -> Parser res
-(*>) lp rp =
-  (flip always) `map` lp `andMap` rp
+many1 : Parser res -> Parser (List res)
+many1 p =
+  (::) `map` p `andMap` many p
