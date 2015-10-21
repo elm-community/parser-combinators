@@ -1,12 +1,14 @@
 {
-    "version": "0.1.0",
-    "summary": "a parser combinator library",
+    "version": "1.0.0",
+    "summary": "A parser combinator library",
     "repository": "https://github.com/Bogdanp/elm-combine.git",
     "license": "BSD3",
     "source-directories": [
         "src"
     ],
-    "exposed-modules": [],
+    "exposed-modules": [
+        "Combine"
+    ],
     "dependencies": {
         "elm-lang/core": "2.1.0 <= v < 3.0.0",
         "maxsnew/lazy": "1.0.1 <= v < 2.0.0"
