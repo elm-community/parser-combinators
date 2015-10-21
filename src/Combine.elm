@@ -1,5 +1,6 @@
 module Combine where
 
+import Lazy as L
 import String
 import Regex exposing (Regex(..))
 
@@ -14,18 +15,50 @@ type Result res
   | Fail String
 
 
-type Parser res =
-  Parser (Context -> (Result res, Context))
+type alias ParseFn res =
+  Context -> (Result res, Context)
+
+
+type Parser res
+  = Parser (ParseFn res)
+  | RecursiveParser (L.Lazy (ParseFn res))
 
 
 app : Parser res -> (Context -> (Result res, Context))
 app p =
   case p of
-    Parser p -> p
+    Parser p ->
+      p
+
+    RecursiveParser t ->
+      L.force t
 
 
+{-| Parse a string. -}
 parse : Parser res -> String -> (Result res, Context)
 parse p input = app p { input = input }
+
+
+{-| Defer a parser's evaluation.
+
+    type E = ETerm String | EList (List E)
+
+    whitespace = regex "[ \t\r\n]*"
+    term = ETerm `map` (whitespace *> regex "[a-zA-Z]+" <* whitespace)
+    list = rec (\() -> EList `map` (string "(" *> many (term `or` list) <* string ")"))
+
+    parse list "" == \
+      (Fail "expected '('", { input = "" })
+
+    parse list "()" == \
+      (Done (EList []), { input = "" })
+
+    parse list "(a (b c))" == \
+      (Done (EList [ETerm "a", EList [ETerm "b", ETerm "c"]]), { input = "" })
+ -}
+rec : (() -> Parser res) -> Parser res
+rec t =
+  RecursiveParser << L.lazy <| \() -> app (t ())
 
 
 {-| Transform both the result and error message of a parser.
