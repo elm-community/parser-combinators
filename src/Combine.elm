@@ -2,7 +2,7 @@ module Combine ( Parser(..), ParseFn, Context, Result(..)
                , parse, app, rec
                , bimap, map, mapError, (<$>), (<?>)
                , andThen, andMap, (*>), (<*)
-               , fail, succeed, string, regex, while, end
+               , fail, succeed, char, string, regex, while, end
                , or, choice, optional, many, many1, (<|>)
                ) where
 
@@ -20,7 +20,7 @@ module Combine ( Parser(..), ParseFn, Context, Result(..)
 @docs andThen, andMap, (*>), (<*)
 
 # Parsers
-@docs fail, succeed, string, regex, while, end, or, choice, optional, many, many1, (<|>)
+@docs fail, succeed, char, string, regex, while, end, or, choice, optional, many, many1, (<|>)
 -}
 
 import Lazy as L
@@ -99,7 +99,7 @@ parse p input = app p { input = input, position = 0 }
     list = rec (\() -> EList `map` (string "(" *> many (term `or` list) <* string ")"))
 
     parse list "" == \
-      (Fail ["expected '('"], { input = "", position = 0 })
+      (Fail ["expected \"(\""], { input = "", position = 0 })
 
     parse list "()" == \
       (Done (EList []), { input = "", position = 2 })
@@ -119,13 +119,13 @@ bimap : (res -> res')
       -> Parser res
       -> Parser res'
 bimap fok ferr p =
-  Parser <| \c ->
-    case app p c of
-      (Done r, c) ->
-        (Done (fok r), c)
+  Parser <| \cx ->
+    case app p cx of
+      (Done r, cx) ->
+        (Done (fok r), cx)
 
       (Fail m, c) ->
-        (Fail (ferr m), c)
+        (Fail (ferr m), cx)
 
 
 {-| Transform the result of a parser.
@@ -165,13 +165,13 @@ of a single string.
 to the second. -}
 andThen : Parser res -> (res -> Parser res') -> Parser res'
 andThen p f =
-  Parser <| \c ->
-    case app p c of
-      (Done res, c) ->
-        app (f res) c
+  Parser <| \cx ->
+    case app p cx of
+      (Done res, cx) ->
+        app (f res) cx
 
-      (Fail m, c) ->
-        (Fail m, c)
+      (Fail m, cx) ->
+        (Fail m, cx)
 
 
 {-| Sequence two parsers.
@@ -223,8 +223,8 @@ andMap lp rp =
 {-| Fail without consuming any input. -}
 fail : List String -> Parser res
 fail ms =
-  Parser <| \c ->
-    (Fail ms, c)
+  Parser <| \cx ->
+    (Fail ms, cx)
 
 
 {-| Return a value without consuming any input.
@@ -234,8 +234,30 @@ fail ms =
 -}
 succeed : res -> Parser res
 succeed r =
-  Parser <| \c ->
-    (Done r, c)
+  Parser <| \cx ->
+    (Done r, cx)
+
+
+{-| Parse an exact character match.
+
+    parse (char 'a') "a" == \
+      (Done 'a', { input = "", position = 1 })
+
+    parse (char 'a') "b" == \
+      (Fail ["expected 'a'"], { input = "b", position = 0 })
+-}
+char : Char -> Parser Char
+char c =
+  Parser <| \cx ->
+    let message = "expected " ++ (toString c) in
+    case String.uncons cx.input of
+      Just (h, rest) ->
+        if c == h
+        then (Done c, { cx | input <- rest, position <- cx.position + 1 })
+        else (Fail [message], cx)
+
+      Nothing ->
+        (Fail [message], cx)
 
 
 {-| Parse an exact string match.
@@ -244,19 +266,19 @@ succeed r =
       (Done "hello", { input = " world", position = 5 })
 
     parse (string "hello") "goodbye" == \
-      (Fail ["expected 'hello'"], { input = "goodbye", position = 0 })
+      (Fail ["expected \"hello\""], { input = "goodbye", position = 0 })
 -}
 string : String -> Parser String
 string s =
-  Parser <| \c ->
-    if String.startsWith s c.input
+  Parser <| \cx ->
+    if String.startsWith s cx.input
     then
       let
         len = String.length s
-        rem = String.dropLeft len c.input
-        pos = c.position + len
-      in (Done s, {c | input <- rem, position <- pos})
-    else (Fail ["expected '" ++ s ++ "'"], c)
+        rem = String.dropLeft len cx.input
+        pos = cx.position + len
+      in (Done s, {cx | input <- rem, position <- pos})
+    else (Fail ["expected " ++ (toString s)], cx)
 
 
 {-| Parse a Regex match.
@@ -276,17 +298,17 @@ regex pattern =
       then pattern
       else "^" ++ pattern
   in
-  Parser <| \c ->
-    case Regex.find (Regex.AtMost 1) (Regex.regex pattern') c.input of
+  Parser <| \cx ->
+    case Regex.find (Regex.AtMost 1) (Regex.regex pattern') cx.input of
       [match] ->
         let
           len = String.length match.match
-          rem = String.dropLeft len c.input
-          pos = c.position + len
-        in (Done match.match, {c | input <- rem, position <- pos })
+          rem = String.dropLeft len cx.input
+          pos = cx.position + len
+        in (Done match.match, {cx | input <- rem, position <- pos })
 
       _ ->
-        (Fail ["expected input matching Regexp /" ++ pattern' ++ "/"], c)
+        (Fail ["expected input matching Regexp /" ++ pattern' ++ "/"], cx)
 
 
 {-| Consume input while the predicate matches.
@@ -297,23 +319,23 @@ regex pattern =
 while : (Char -> Bool) -> Parser String
 while pred =
   let
-    accumulate acc c =
-      case String.uncons c.input of
+    accumulate acc cx =
+      case String.uncons cx.input of
         Just (h, rest) ->
           if pred h
           then
             let
-              char = String.cons h ""
-              pos = c.position + 1
-            in accumulate (acc ++ char) { c | input <- rest, position <- pos }
-          else (acc, c)
+              c = String.cons h ""
+              pos = cx.position + 1
+            in accumulate (acc ++ c) {cx | input <- rest, position <- pos}
+          else (acc, cx)
 
         Nothing ->
-          (acc, c)
+          (acc, cx)
   in
     Parser <| \cx ->
-      let (res, c) = accumulate "" cx in
-      (Done res, c)
+      let (res, cx') = accumulate "" cx in
+      (Done res, cx')
 
 
 {-| Fail when the input is not empty.
@@ -323,10 +345,10 @@ while pred =
 -}
 end : Parser ()
 end =
-  Parser <| \c ->
-    if c.input == ""
-    then (Done (), c)
-    else (Fail ["expected end of input"], c)
+  Parser <| \cx ->
+    if cx.input == ""
+    then (Done (), cx)
+    else (Fail ["expected end of input"], cx)
 
 
 {-| Choose between two parsers.
@@ -338,25 +360,24 @@ end =
       (Done "b", { input = "", position = 1 })
 
     parse (string "a" `or` string "b") "c" == \
-      (Fail ["expected 'a' or expected 'b'"], { input = "c", position = 0 })
+      (Fail ["expected \"a\"", "expected \"b\""], { input = "c", position = 0 })
 -}
 or : Parser res -> Parser res -> Parser res
 or lp rp =
-  Parser <| \c ->
-    let res = app lp c in
+  Parser <| \cx ->
+    let res = app lp cx in
     case res of
       (Done _, _) ->
         res
 
       (Fail lm, _) ->
-        -- XXX: res' to avoid dynamic scoping issue in compiled JS.
-        let res' = app rp c in
+        let res' = app rp cx in
         case res' of
           (Done _, _) ->
             res'
 
           (Fail rm, _) ->
-            (Fail (lm ++ rm), c)
+            (Fail (lm ++ rm), cx)
 
 {-| Synonym for `or`. -}
 (<|>) : Parser res -> Parser res -> Parser res
@@ -400,17 +421,17 @@ optional p res =
 many : Parser res -> Parser (List res)
 many p =
   let
-    accumulate acc c =
-      case app p c of
-        (Done res, c) ->
-          accumulate (res :: acc) c
+    accumulate acc cx =
+      case app p cx of
+        (Done res, cx') ->
+          accumulate (res :: acc) cx'
 
         _ ->
-          (List.reverse acc, c)
+          (List.reverse acc, cx)
   in
     Parser <| \cx ->
-      let (res, c) = accumulate [] cx in
-      (Done res, c)
+      let (res, cx') = accumulate [] cx in
+      (Done res, cx')
 
 
 {-| Parse at least one result.
@@ -419,7 +440,7 @@ many p =
       (Done ["a"], { input = "", position = 1 })
 
     parse (many1 (string "a")) "" == \
-      (Fail ["expected 'a'"], { input = "", position = 0 })
+      (Fail ["expected \"a\""], { input = "", position = 0 })
 -}
 many1 : Parser res -> Parser (List res)
 many1 p =
