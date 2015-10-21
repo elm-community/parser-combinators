@@ -1,6 +1,7 @@
 module Scheme where
 
 import Combine exposing (..)
+import Debug
 import String
 
 type E
@@ -16,8 +17,8 @@ type E
 undefined : a
 undefined = undefined
 
-forcing : (String -> Result.Result x res) -> String -> res
-forcing f s =
+unwrap : (String -> Result.Result x res) -> String -> res
+unwrap f s =
   case f s of
     Ok res ->
       res
@@ -26,10 +27,10 @@ forcing f s =
       undefined
 
 toInt : String -> Int
-toInt = forcing String.toInt
+toInt = unwrap String.toInt
 
 toFloat : String -> Float
-toFloat = forcing String.toFloat
+toFloat = unwrap String.toFloat
 
 whitespace : Parser String
 whitespace = regex "[ \t\r\n]*"
@@ -39,7 +40,7 @@ sign = optional 1 (choice [  1 <$ string "+"
                           , -1 <$ string "-" ])
 
 int : Parser E
-int = (EInt << toInt) <$> regex "[1-9][0-9]*"
+int = (EInt << toInt) <$> regex "(0|[1-9][0-9]*)"
 
 float : Parser E
 float = (EFloat << toFloat) <$> regex "(0|[1-9][0-9]*)(\\.[0-9]+)"
@@ -63,7 +64,7 @@ name : Parser E
 name = EName <$> regex "[a-zA-Z-_+][a-zA-Z0-9-_+]*"
 
 list : Parser E
-list = EList <$> (char '(' *> many expr <* char ')')
+list = EList <$> (string "(" *> many expr <* string ")")
 
 quote : Parser E
 quote = EQuote <$> (string "'" *> expr)
@@ -75,9 +76,10 @@ unquote : Parser E
 unquote = EUnquote <$> (string "," *> expr)
 
 expr : Parser E
-expr = rec (\() -> whitespace *> choice [ num , str , name , list
-                                        , quote, quasiquote, unquote
-                                        ])
+expr =
+  rec (\() ->
+    let parsers = [ num , str , name , list , quote, quasiquote, unquote ]
+    in whitespace *> choice parsers <* whitespace)
 
 parse : String -> Result.Result String (List E)
 parse s =
