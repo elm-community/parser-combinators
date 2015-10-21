@@ -61,23 +61,17 @@ name : Parser E
 name = EName <$> regex "[a-zA-Z-_+][a-zA-Z0-9-_+]*"
 
 app : Parser E
-app =
-  rec (\() ->
-    let expr = whitespace *> choice [num, name, str, app, quote] in
-    (char '(' *> (EApp <$> expr `andMap` many expr <* char ')')))
+app = char '(' *> (EApp <$> expr `andMap` many expr) <* char ')'
 
 quote : Parser E
-quote =
-  rec (\() ->
-    let expr = whitespace *> choice [num, name, str, app, quote] in
-    EQuote <$> (string "'(" *> many expr <* char ')'))
+quote = EQuote <$> (string "'(" *> many expr <* char ')')
 
 expr : Parser E
-expr = choice [num, name, str, app, quote] <* end
+expr = rec (\() -> whitespace *> choice [num, str, name, app, quote])
 
 parse : String -> Result.Result String E
 parse s =
-  case Combine.parse expr s of
+  case Combine.parse (expr <* end) s of
     (Done e, _) ->
       Ok e
 
