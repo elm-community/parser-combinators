@@ -8,8 +8,10 @@ type E
   | EFloat Float
   | EString String
   | EName String
-  | EApp E (List E)
-  | EQuote (List E)
+  | EList (List E)
+  | EQuote E
+  | EQuasiquote E
+  | EUnquote E
 
 undefined : a
 undefined = undefined
@@ -60,18 +62,26 @@ str = EString <$> regex "\"(\\\"|[^\"])+\""
 name : Parser E
 name = EName <$> regex "[a-zA-Z-_+][a-zA-Z0-9-_+]*"
 
-app : Parser E
-app = char '(' *> (EApp <$> expr `andMap` many expr) <* char ')'
+list : Parser E
+list = EList <$> (char '(' *> many expr <* char ')')
 
 quote : Parser E
-quote = EQuote <$> (string "'(" *> many expr <* char ')')
+quote = EQuote <$> (string "'" *> expr)
+
+quasiquote : Parser E
+quasiquote = EQuasiquote <$> (string "`" *> expr)
+
+unquote : Parser E
+unquote = EUnquote <$> (string "," *> expr)
 
 expr : Parser E
-expr = rec (\() -> whitespace *> choice [num, str, name, app, quote])
+expr = rec (\() -> whitespace *> choice [ num , str , name , list
+                                        , quote, quasiquote, unquote
+                                        ])
 
-parse : String -> Result.Result String E
+parse : String -> Result.Result String (List E)
 parse s =
-  case Combine.parse (expr <* end) s of
+  case Combine.parse (many expr <* end) s of
     (Done e, _) ->
       Ok e
 
