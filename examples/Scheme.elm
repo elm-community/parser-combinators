@@ -1,7 +1,7 @@
 module Scheme where
 
 import Combine exposing (..)
-import Debug
+import Combine.Infix exposing (..)
 import String
 
 type E
@@ -79,9 +79,9 @@ num =
           succeed (EFloat ((Basics.toFloat x) * n))
 
 char : Parser E
-char = EChar <$> (string "#\\" *> (choice [ ' '  <$ string "space"
-                                          , '\n' <$ string "newline"
-                                          , toChar <$> regex "." ]))
+char = EChar <$> (string "#\\" *> choice [ ' '  <$ string "space"
+                                         , '\n' <$ string "newline"
+                                         , toChar <$> regex "." ])
 
 str : Parser E
 str = EString <$> regex "\"(\\\"|[^\"])+\""
@@ -123,10 +123,10 @@ unquoteSplice = EUnquoteSplice <$> (string ",@" *> expr)
 
 expr : Parser E
 expr =
-  rec (\() ->
+  rec <| \() ->
     let parsers = [ bool, num , char, str, identifier, list, vector
                   , quote, quasiquote, unquote, unquoteSplice, comment ]
-    in whitespace *> choice parsers <* whitespace)
+    in whitespace *> choice parsers <* whitespace
 
 parse : String -> Result.Result String (List E)
 parse s =

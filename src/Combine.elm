@@ -1,9 +1,9 @@
 module Combine ( Parser(..), ParseFn, Context, Result(..)
                , parse, app, rec
-               , bimap, map, mapError, (<$>), (<$), (<?>)
-               , andThen, andMap, (*>), (<*)
+               , bimap, map, mapError
+               , andThen, andMap
                , fail, succeed, char, string, regex, while, end
-               , or, choice, optional, many, many1, (<|>)
+               , or, choice, optional, many, many1
                ) where
 
 {-| This library provides reasonably fast parser combinators.
@@ -14,13 +14,13 @@ module Combine ( Parser(..), ParseFn, Context, Result(..)
 @docs parse, app, rec
 
 # Transforming Parsers
-@docs bimap, map, mapError, (<$>), (<$), (<?>)
+@docs bimap, map, mapError
 
 # Chaining Parsers
-@docs andThen, andMap, (*>), (<*)
+@docs andThen, andMap
 
 # Parsers
-@docs fail, succeed, char, string, regex, while, end, or, choice, optional, many, many1, (<|>)
+@docs fail, succeed, char, string, regex, while, end, or, choice, optional, many, many1
 -}
 
 import Lazy as L
@@ -146,25 +146,6 @@ mapError : (List String -> List String) -> Parser res -> Parser res
 mapError = bimap identity
 
 
-{-| Synonym for `map`. -}
-(<$>) : (res -> res') -> Parser res -> Parser res'
-(<$>) = map
-
-{-| Variant of `map` that ignores the Parser's result. -}
-(<$) : res -> Parser x -> Parser res
-(<$) res = map (\_ -> res)
-
-
-{-| Variant of `mapError` that replaces the Parser's error with a List
-of a single string.
-
-    parse (string "a" <?> "gimme an 'a'") "b" == \
-      (Fail ["gimme an 'a'"], { input = "b", position = 0 })
--}
-(<?>) : Parser res -> String -> Parser res
-(<?>) p m = mapError (\_ -> [m]) p
-
-
 {-| Sequence two parsers by passing in the results of the first parser
 to the second. -}
 andThen : Parser res -> (res -> Parser res') -> Parser res'
@@ -198,30 +179,6 @@ andMap lp rp =
   lp
     `andThen` \f -> rp
     `andThen` \x -> succeed (f x)
-
-
-{-| Join two parsers, ignoring the result of the one on the right.
-
-    unsuffix : Parser String
-    unsuffix = regex "[a-z]" <* regex "[!?]"
-
-    parse unsuffix "a!" == (Done "a", { input = "", position = 2 })
--}
-(<*) : Parser res -> Parser x -> Parser res
-(<*) lp rp =
-  always `map` lp `andMap` rp
-
-
-{-| Join two parsers, ignoring the result of the one on the left.
-
-    unprefix : Parser String
-    unprefix = string ">" *> while ((==) ' ') *> while ((/=) ' ')
-
-    parse unprefix "> a" == (Done "a", { input = "", position = 3 })
--}
-(*>) : Parser x -> Parser res -> Parser res
-(*>) lp rp =
-  (flip always) `map` lp `andMap` rp
 
 
 {-| Fail without consuming any input. -}
@@ -382,10 +339,6 @@ or lp rp =
 
           (Fail rm, _) ->
             (Fail (lm ++ rm), cx)
-
-{-| Synonym for `or`. -}
-(<|>) : Parser res -> Parser res -> Parser res
-(<|>) = or
 
 
 {-| Choose between a list of parsers.
