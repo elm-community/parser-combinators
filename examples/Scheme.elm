@@ -96,7 +96,7 @@ identifier =
   EIdentifier <$> regex identifierRe
 
 list : Parser E
-list = EList <$> (string "(" *> many expr <* string ")")
+list = EList <$> parens (many expr)
 
 vector : Parser E
 vector = EVector <$> (string "#(" *> many expr <* string ")")

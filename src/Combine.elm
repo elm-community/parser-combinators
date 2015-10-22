@@ -3,7 +3,9 @@ module Combine ( Parser(..), ParseFn, Context, Result(..)
                , bimap, map, mapError
                , andThen, andMap
                , fail, succeed, string, regex, while, end
-               , or, choice, optional, many, many1
+               , or, choice, optional, maybe, many, many1
+               , skip, skipMany, skipMany1, between
+               , parens, brackets, squareBrackets
                ) where
 
 {-| This library provides reasonably fast parser combinators.
@@ -20,7 +22,7 @@ module Combine ( Parser(..), ParseFn, Context, Result(..)
 @docs andThen, andMap
 
 # Parsers
-@docs fail, succeed, string, regex, while, end, or, choice, optional, many, many1
+@docs fail, succeed, string, regex, while, end, or, choice, optional, maybe, many, many1, skip, skipMany, skipMany1, between, parens, brackets, squareBrackets
 -}
 
 import Lazy as L
@@ -345,6 +347,25 @@ optional res p =
   p `or` succeed res
 
 
+{-| Wrap the return value into a `Maybe`. Returns `Nothing` on failure.
+
+    parse (maybe (string "a")) "a" == \
+      (Done (Just "a"), { input = "", position = 1 })
+
+    parse (maybe (string "a")) "b" == \
+      (Done Nothing, { input = "b", position = 0 })
+-}
+maybe : Parser res -> Parser (Maybe res)
+maybe p =
+  Parser <| \cx ->
+    case app p cx of
+      (Done res, cx') ->
+        (Done (Just res), cx')
+
+      _ ->
+        (Done Nothing, cx)
+
+
 {-| Apply a parser until it fails and return a list of the results.
 
     parse (many (string "a")) "aaab" == \
@@ -380,3 +401,47 @@ many p =
 many1 : Parser res -> Parser (List res)
 many1 p =
   (::) `map` p `andMap` many p
+
+
+{-| Apply a parser and skip its result. -}
+skip : Parser x -> Parser ()
+skip p = p `andThen` (always <| succeed ())
+
+
+{-| Apply a parser and skip its result many times. -}
+skipMany : Parser x -> Parser ()
+skipMany p = many (skip p) `andThen` (always <| succeed ())
+
+
+{-| Apply a parser and skip its result at least one. -}
+skipMany1 : Parser x -> Parser ()
+skipMany1 p = many1 (skip p) `andThen` (always <| succeed ())
+
+
+{-| Parse something between two other parsers.
+
+The parser
+
+    between (string "(") (string ")") (string "a")
+
+is equivalent to
+
+    string "(" *> string "a" <* string ")"
+-}
+between : Parser left -> Parser right -> Parser res -> Parser res
+between lp rp p = (flip (always << always)) `map` lp `andMap` p `andMap` rp
+
+
+{-| Parse something between parentheses. -}
+parens : Parser res -> Parser res
+parens = between (string "(") (string ")")
+
+
+{-| Parse something between brackets. -}
+brackets : Parser res -> Parser res
+brackets = between (string "{") (string "}")
+
+
+{-| Parse something between square brackets. -}
+squareBrackets : Parser res -> Parser res
+squareBrackets = between (string "[") (string "]")
