@@ -3,6 +3,7 @@ module Scheme where
 import Combine exposing (..)
 import Combine.Char exposing (..)
 import Combine.Infix exposing (..)
+import Combine.Num
 import String
 
 type E
@@ -20,24 +21,6 @@ type E
   | EUnquoteSplice E
   | EComment String
 
-undefined : a
-undefined = undefined
-
-unwrap : (String -> Result.Result x res) -> String -> res
-unwrap f s =
-  case f s of
-    Ok res ->
-      res
-
-    Err _ ->
-      undefined
-
-toInt : String -> Int
-toInt = unwrap String.toInt
-
-toFloat : String -> Float
-toFloat = unwrap String.toFloat
-
 whitespace : Parser String
 whitespace = regex "[ \t\r\n]*"
 
@@ -53,22 +36,13 @@ sign = optional 1 (choice [  1 <$ string "+"
                           , -1 <$ string "-" ])
 
 int : Parser E
-int = (EInt << toInt) <$> regex "(0|[1-9][0-9]*)"
+int = EInt <$> Combine.Num.int
 
 float : Parser E
-float = (EFloat << toFloat) <$> regex "(0|[1-9][0-9]*)(\\.[0-9]+)"
+float = EFloat <$> Combine.Num.float
 
 num : Parser E
-num =
-  sign
-    `andThen` \x -> float `or` int
-    `andThen` \n ->
-      case n of
-        EInt n ->
-          succeed (EInt (x * n))
-
-        EFloat n ->
-          succeed (EFloat ((Basics.toFloat x) * n))
+num = float <|> int
 
 char : Parser E
 char = EChar <$> (string "#\\" *> choice [ ' '  <$ string "space"

@@ -10,7 +10,8 @@
     "exposed-modules": [
         "Combine",
         "Combine.Char",
-        "Combine.Infix"
+        "Combine.Infix",
+        "Combine.Num"
     ],
     "dependencies": {
         "elm-lang/core": "2.1.0 <= v < 3.0.0",
