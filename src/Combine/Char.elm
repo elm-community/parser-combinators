@@ -14,10 +14,10 @@ import String
 
 {-| Parse a character matching the predicate.
 
-    parse ((==) 'a') "a" == \
+    parse (satisfy ((==) 'a')) "a" == \
       (Done 'a', { input = "", position = 1 })
 
-    parse ((==) 'a') "b" == \
+    parse (satisfy ((==) 'a')) "b" == \
       (Fail ["could not satisfy predicate"], { input = "b", position = 0 })
 -}
 satisfy : (Char -> Bool) -> Parser Char
