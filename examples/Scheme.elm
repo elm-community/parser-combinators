@@ -1,6 +1,7 @@
 module Scheme where
 
 import Combine exposing (..)
+import Combine.Char exposing (..)
 import Combine.Infix exposing (..)
 import String
 
@@ -37,15 +38,6 @@ toInt = unwrap String.toInt
 toFloat : String -> Float
 toFloat = unwrap String.toFloat
 
-toChar : String -> Char
-toChar s =
-  case String.uncons s of
-    Just (c, _) ->
-      c
-
-    Nothing ->
-      undefined
-
 whitespace : Parser String
 whitespace = regex "[ \t\r\n]*"
 
@@ -81,7 +73,7 @@ num =
 char : Parser E
 char = EChar <$> (string "#\\" *> choice [ ' '  <$ string "space"
                                          , '\n' <$ string "newline"
-                                         , toChar <$> regex "." ])
+                                         , anyChar ])
 
 str : Parser E
 str = EString <$> regex "\"(\\\"|[^\"])+\""

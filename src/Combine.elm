@@ -2,7 +2,7 @@ module Combine ( Parser(..), ParseFn, Context, Result(..)
                , parse, app, rec
                , bimap, map, mapError
                , andThen, andMap
-               , fail, succeed, char, string, regex, while, end
+               , fail, succeed, string, regex, while, end
                , or, choice, optional, many, many1
                ) where
 
@@ -20,7 +20,7 @@ module Combine ( Parser(..), ParseFn, Context, Result(..)
 @docs andThen, andMap
 
 # Parsers
-@docs fail, succeed, char, string, regex, while, end, or, choice, optional, many, many1
+@docs fail, succeed, string, regex, while, end, or, choice, optional, many, many1
 -}
 
 import Lazy as L
@@ -197,28 +197,6 @@ succeed : res -> Parser res
 succeed r =
   Parser <| \cx ->
     (Done r, cx)
-
-
-{-| Parse an exact character match.
-
-    parse (char 'a') "a" == \
-      (Done 'a', { input = "", position = 1 })
-
-    parse (char 'a') "b" == \
-      (Fail ["expected 'a'"], { input = "b", position = 0 })
--}
-char : Char -> Parser Char
-char c =
-  Parser <| \cx ->
-    let message = "expected " ++ (toString c) in
-    case String.uncons cx.input of
-      Just (h, rest) ->
-        if c == h
-        then (Done c, { cx | input <- rest, position <- cx.position + 1 })
-        else (Fail [message], cx)
-
-      Nothing ->
-        (Fail [message], cx)
 
 
 {-| Parse an exact string match.
