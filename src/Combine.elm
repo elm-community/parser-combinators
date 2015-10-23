@@ -57,7 +57,7 @@ tuple of a `Result` and a new `Context`.
     myParser : Parser Int
     myParser = Parser myParseFn
 
-    parse myParser "a" == \
+    parse myParser "a" ==
       (Done 1, { input = "a", position = 0 })
 -}
 type alias ParseFn res =
@@ -100,15 +100,14 @@ parse p input = app p { input = input, position = 0 }
     list : Parser E
     list = rec (\() -> EList `map` (string "(" *> many (term `or` list) <* string ")"))
 
-    parse list "" == \
+    parse list "" ==
       (Fail ["expected \"(\""], { input = "", position = 0 })
 
-    parse list "()" == \
+    parse list "()" ==
       (Done (EList []), { input = "", position = 2 })
 
-    parse list "(a (b c))" == \
-      (Done (EList [ETerm "a", EList [ETerm "b", ETerm "c"]]) \
-      , { input = "", position = 9 })
+    parse list "(a (b c))" ==
+      (Done (EList [ETerm "a", EList [ETerm "b", ETerm "c"]]), { input = "", position = 9 })
 -}
 rec : (() -> Parser res) -> Parser res
 rec t =
@@ -132,7 +131,7 @@ bimap fok ferr p =
 
 {-| Transform the result of a parser.
 
-    parse (map String.toUpper (string "a")) "a" == \
+    parse (map String.toUpper (string "a")) "a" ==
       (Done "A", { input = "", position = 1 })
 -}
 map : (res -> res') -> Parser res -> Parser res'
@@ -141,7 +140,7 @@ map f p = bimap f identity p
 
 {-| Transform the error of a parser.
 
-    parse (mapError (\_ -> ["bad input"]) (string "a")) "b" == \
+    parse (mapError (\_ -> ["bad input"]) (string "a")) "b" ==
       (Fail ["bad input"], { input = "b", position = 0 })
 -}
 mapError : (List String -> List String) -> Parser res -> Parser res
@@ -173,7 +172,7 @@ andThen p f =
     sum : Parser Int
     sum = (+) `map` (num <* string "+") `andMap` num
 
-    parse sum "1+2" == \
+    parse sum "1+2" ==
       (Done 3, { input = "", position = 3 })
 -}
 andMap : Parser (res -> res') -> Parser res -> Parser res'
@@ -192,7 +191,7 @@ fail ms =
 
 {-| Return a value without consuming any input.
 
-    parse (succeed 1) "a" == \
+    parse (succeed 1) "a" ==
       (Done 1, { input = "a", position = 0 })
 -}
 succeed : res -> Parser res
@@ -203,10 +202,10 @@ succeed r =
 
 {-| Parse an exact string match.
 
-    parse (string "hello") "hello world" == \
+    parse (string "hello") "hello world" ==
       (Done "hello", { input = " world", position = 5 })
 
-    parse (string "hello") "goodbye" == \
+    parse (string "hello") "goodbye" ==
       (Fail ["expected \"hello\""], { input = "goodbye", position = 0 })
 -}
 string : String -> Parser String
@@ -228,7 +227,7 @@ Regular expressions must match from the beginning of the input and their
 subgroups are ignored. A `^` is added implicitly to the beginning of
 every pattern unless one already exists.
 
-    parse (regex "a+") "aaaaab" == \
+    parse (regex "a+") "aaaaab" ==
       (Done "aaaaa", { input = "b", position = 5 })
 -}
 regex : String -> Parser String
@@ -254,7 +253,7 @@ regex pattern =
 
 {-| Consume input while the predicate matches.
 
-    parse (while ((/=) ' ')) "test 123" == \
+    parse (while ((/=) ' ')) "test 123" ==
       (Done "test", { input = " 123", position = 4 })
 -}
 while : (Char -> Bool) -> Parser String
@@ -294,13 +293,13 @@ end =
 
 {-| Choose between two parsers.
 
-    parse (string "a" `or` string "b") "a" == \
+    parse (string "a" `or` string "b") "a" ==
       (Done "a", { input = "", position = 1 })
 
-    parse (string "a" `or` string "b") "b" == \
+    parse (string "a" `or` string "b") "b" ==
       (Done "b", { input = "", position = 1 })
 
-    parse (string "a" `or` string "b") "c" == \
+    parse (string "a" `or` string "b") "c" ==
       (Fail ["expected \"a\"", "expected \"b\""], { input = "c", position = 0 })
 -}
 or : Parser res -> Parser res -> Parser res
@@ -323,10 +322,10 @@ or lp rp =
 
 {-| Choose between a list of parsers.
 
-    parse (choice [string "a", string "b"]) "a" == \
+    parse (choice [string "a", string "b"]) "a" ==
       (Done "a", { input = "", position = 1 })
 
-    parse (choice [string "a", string "b"]) "b" == \
+    parse (choice [string "a", string "b"]) "b" ==
       (Done "b", { input = "", position = 1 })
 -}
 choice : List (Parser res) -> Parser res
@@ -349,10 +348,10 @@ optional res p =
 
 {-| Wrap the return value into a `Maybe`. Returns `Nothing` on failure.
 
-    parse (maybe (string "a")) "a" == \
+    parse (maybe (string "a")) "a" ==
       (Done (Just "a"), { input = "", position = 1 })
 
-    parse (maybe (string "a")) "b" == \
+    parse (maybe (string "a")) "b" ==
       (Done Nothing, { input = "b", position = 0 })
 -}
 maybe : Parser res -> Parser (Maybe res)
@@ -368,10 +367,10 @@ maybe p =
 
 {-| Apply a parser until it fails and return a list of the results.
 
-    parse (many (string "a")) "aaab" == \
+    parse (many (string "a")) "aaab" ==
       (Done ["a", "a", "a"], { input = "b", position = 3 })
 
-    parse (many (string "a")) "" == \
+    parse (many (string "a")) "" ==
       (Done [], { input = "", position = 0 })
 -}
 many : Parser res -> Parser (List res)
@@ -392,10 +391,10 @@ many p =
 
 {-| Parse at least one result.
 
-    parse (many1 (string "a")) "a" == \
+    parse (many1 (string "a")) "a" ==
       (Done ["a"], { input = "", position = 1 })
 
-    parse (many1 (string "a")) "" == \
+    parse (many1 (string "a")) "" ==
       (Fail ["expected \"a\""], { input = "", position = 0 })
 -}
 many1 : Parser res -> Parser (List res)
@@ -424,7 +423,7 @@ The parser
 
     between (string "(") (string ")") (string "a")
 
-is equivalent to
+is equivalent to the parser
 
     string "(" *> string "a" <* string ")"
 -}

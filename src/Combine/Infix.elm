@@ -29,7 +29,7 @@ import Combine exposing (..)
 {-| Variant of `Combine.mapError` that replaces the Parser's error
 with a List of a single string.
 
-    parse (string "a" <?> "gimme an 'a'") "b" == \
+    parse (string "a" <?> "gimme an 'a'") "b" ==
       (Fail ["gimme an 'a'"], { input = "b", position = 0 })
 -}
 (<?>) : Parser res -> String -> Parser res

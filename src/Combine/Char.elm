@@ -14,10 +14,10 @@ import String
 
 {-| Parse a character matching the predicate.
 
-    parse (satisfy ((==) 'a')) "a" == \
+    parse (satisfy ((==) 'a')) "a" ==
       (Done 'a', { input = "", position = 1 })
 
-    parse (satisfy ((==) 'a')) "b" == \
+    parse (satisfy ((==) 'a')) "b" ==
       (Fail ["could not satisfy predicate"], { input = "b", position = 0 })
 -}
 satisfy : (Char -> Bool) -> Parser Char
@@ -36,10 +36,10 @@ satisfy pred =
 
 {-| Parse an exact character match.
 
-    parse (char 'a') "a" == \
+    parse (char 'a') "a" ==
       (Done 'a', { input = "", position = 1 })
 
-    parse (char 'a') "b" == \
+    parse (char 'a') "b" ==
       (Fail ["expected 'a'"], { input = "b", position = 0 })
 -}
 char : Char -> Parser Char
@@ -48,10 +48,10 @@ char c = satisfy ((==) c) <?> ("expected " ++ (toString c))
 
 {-| Parse any character.
 
-    parse anyChar "a" == \
+    parse anyChar "a" ==
       (Done 'a', { input = "", position = 1 })
 
-    parse anyChar "" == \
+    parse anyChar "" ==
       (Fail ["expected any character"], { input = "", position = 0 })
 -}
 anyChar : Parser Char
@@ -60,10 +60,10 @@ anyChar = satisfy (always True) <?> "expected any character"
 
 {-| Parse a character from the given list.
 
-    parse (oneOf ['a', 'b']) "a" == \
+    parse (oneOf ['a', 'b']) "a" ==
       (Done 'a', { input = "", position = 1 })
 
-    parse (oneOf ['a', 'b']) "c" == \
+    parse (oneOf ['a', 'b']) "c" ==
       (Fail ["expected one of ['a','b']"], { input = "c", position = 0 })
 -}
 oneOf : List Char -> Parser Char
@@ -72,10 +72,10 @@ oneOf cs = satisfy (flip List.member cs) <?> ("expected one of " ++ (toString cs
 
 {-| Parse a character from the given list.
 
-    parse (noneOf ['a', 'b']) "c" == \
+    parse (noneOf ['a', 'b']) "c" ==
       (Done 'c', { input = "", position = 1 })
 
-    parse (noneOf ['a', 'b']) "a" == \
+    parse (noneOf ['a', 'b']) "a" ==
       (Fail ["expected none of ['a','b']"], { input = "a", position = 0 })
 -}
 noneOf : List Char -> Parser Char
