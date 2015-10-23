@@ -133,6 +133,22 @@ expr =
                   , quote, quasiquote, unquote, unquoteSplice, comment ]
     in whitespace *> choice parsers <* whitespace
 
+program : Parser (List E)
+program =
+  let
+    all acc cx =
+      if cx.input == ""
+      then (Done (List.reverse acc), cx)
+      else
+        case app expr cx of
+          (Done res', cx') ->
+            all (res' :: acc) cx'
+
+          (Fail ms, cx') ->
+            (Fail ms, cx')
+  in
+  Parser <| \cx -> all [] cx
+
 formatError : String -> List String -> Context -> String
 formatError input ms cx =
   let
@@ -150,7 +166,7 @@ formatError input ms cx =
     expectationSeparator = "\n  * "
     lineNumberOffset = floor (logBase 10 lineNumber) + 1
     separatorOffset = String.length separator
-    padding = lineNumberOffset + separatorOffset + lineOffset
+    padding = lineNumberOffset + separatorOffset + lineOffset + 1
   in
   "Parse error around line:\n\n"
     ++ (toString lineNumber) ++ separator ++ line ++ "\n"
@@ -159,17 +175,11 @@ formatError input ms cx =
     ++ expectationSeparator
     ++ String.join expectationSeparator ms
 
-parse' : String -> Result.Result String (List E)
-parse' s =
-  case Combine.parse (many1 expr <* end) s of
+parse : String -> Result.Result String (List E)
+parse s =
+  case Combine.parse program s of
     (Done e, _) ->
       Ok e
 
     (Fail ms, cx) ->
       Err <| formatError s ms cx
-
-parse : String -> Result.Result String (List E)
-parse s =
-  if String.trim s == ""
-  then Ok []
-  else parse' s
