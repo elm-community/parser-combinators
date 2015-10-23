@@ -4,6 +4,7 @@ import Combine exposing (..)
 import Combine.Char exposing (..)
 import Combine.Infix exposing (..)
 import Combine.Num
+import Debug
 import String
 
 type E
@@ -22,35 +23,55 @@ type E
   | EComment String
 
 whitespace : Parser String
-whitespace = regex "[ \t\r\n]*"
+whitespace = regex "[ \t\r\n]*" <?> "whitespace"
 
 comment : Parser E
-comment = EComment <$> regex ";[^\n]+"
+comment =
+  EComment
+    <$> regex ";[^\n]+"
+    <?> "comment"
 
 bool : Parser E
-bool = EBool <$> choice [ True  <$ string "#t"
-                        , False <$ string "#f" ]
-
-sign : Parser Int
-sign = optional 1 (choice [  1 <$ string "+"
-                          , -1 <$ string "-" ])
+bool =
+  let
+    boolLiteral = choice [ True  <$ string "#t"
+                         , False <$ string "#f"
+                         ]
+  in
+  EBool
+    <$> boolLiteral
+    <?> "boolean literal"
 
 int : Parser E
-int = EInt <$> Combine.Num.int
+int =
+  EInt
+    <$> Combine.Num.int
+    <?> "integer literal"
 
 float : Parser E
-float = EFloat <$> Combine.Num.float
-
-num : Parser E
-num = float <|> int
+float =
+  EFloat
+    <$> Combine.Num.float
+    <?> "float literal"
 
 char : Parser E
-char = EChar <$> (string "#\\" *> choice [ ' '  <$ string "space"
-                                         , '\n' <$ string "newline"
-                                         , anyChar ])
+char =
+  let
+    charLiteral =
+      string "#\\" *> choice [ ' '  <$ string "space"
+                             , '\n' <$ string "newline"
+                             , anyChar
+                             ]
+  in
+  EChar
+    <$> charLiteral
+    <?> "character literal"
 
 str : Parser E
-str = EString <$> regex "\"(\\\"|[^\"])+\""
+str =
+  EString
+    <$> regex "\"(\\\"|[^\"])+\""
+    <?> "string literal"
 
 identifier : Parser E
 identifier =
@@ -67,38 +88,88 @@ identifier =
 
     identifierRe = initialRe ++ subsequentRe
   in
-  EIdentifier <$> regex identifierRe
+  EIdentifier <$> regex identifierRe <?> "identifier"
 
 list : Parser E
-list = EList <$> parens (many expr)
+list =
+  EList
+    <$> parens (many expr)
+    <?> "list"
 
 vector : Parser E
-vector = EVector <$> (string "#(" *> many expr <* string ")")
+vector =
+  EVector
+    <$> (string "#(" *> many expr <* string ")")
+    <?> "vector"
 
 quote : Parser E
-quote = EQuote <$> (string "'" *> expr)
+quote =
+  EQuote
+    <$> (string "'" *> expr)
+    <?> "quoted expression"
 
 quasiquote : Parser E
-quasiquote = EQuasiquote <$> (string "`" *> expr)
+quasiquote =
+  EQuasiquote
+    <$> (string "`" *> expr)
+    <?> "quasiquoted expression"
 
 unquote : Parser E
-unquote = EUnquote <$> (string "," *> expr)
+unquote =
+  EUnquote
+    <$> (string "," *> expr)
+    <?> "unquoted expression"
 
 unquoteSplice : Parser E
-unquoteSplice = EUnquoteSplice <$> (string ",@" *> expr)
+unquoteSplice =
+  EUnquoteSplice
+    <$> (string ",@" *> expr)
+    <?> "spliced expression"
 
 expr : Parser E
 expr =
   rec <| \() ->
-    let parsers = [ bool, num , char, str, identifier, list, vector
+    let parsers = [ bool, float, int, char, str, identifier, list, vector
                   , quote, quasiquote, unquote, unquoteSplice, comment ]
     in whitespace *> choice parsers <* whitespace
 
-parse : String -> Result.Result String (List E)
-parse s =
-  case Combine.parse (many expr <* end) s of
+formatError : String -> List String -> Context -> String
+formatError input ms cx =
+  let
+    lines = String.lines input
+    lineCount = List.length lines
+    (line, lineNumber, lineOffset, _) =
+      List.foldl
+            (\line (line', n, o, pos) ->
+               if pos < 0
+               then (line', n, o, pos)
+               else (line, n + 1, pos, pos - 1 - String.length line'))
+            ("", 0, 0, cx.position) lines
+
+    separator = "|> "
+    expectationSeparator = "\n  * "
+    lineNumberOffset = floor (logBase 10 lineNumber) + 1
+    separatorOffset = String.length separator
+    padding = lineNumberOffset + separatorOffset + lineOffset
+  in
+  "Parse error around line:\n\n"
+    ++ (toString lineNumber) ++ separator ++ line ++ "\n"
+    ++ String.padLeft padding ' ' "^"
+    ++ "\nI expected one of the following:\n"
+    ++ expectationSeparator
+    ++ String.join expectationSeparator ms
+
+parse' : String -> Result.Result String (List E)
+parse' s =
+  case Combine.parse (many1 expr <* end) s of
     (Done e, _) ->
       Ok e
 
-    (Fail ms, c) ->
-      Err ("Parse error on input: " ++ (toString c.input) ++ ". Errors: " ++ (toString ms))
+    (Fail ms, cx) ->
+      Err <| formatError s ms cx
+
+parse : String -> Result.Result String (List E)
+parse s =
+  if String.trim s == ""
+  then Ok []
+  else parse' s
