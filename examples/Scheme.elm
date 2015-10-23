@@ -147,7 +147,7 @@ program =
           (Fail ms, cx') ->
             (Fail ms, cx')
   in
-  Parser <| \cx -> all [] cx
+  Parser <| all []
 
 formatError : String -> List String -> Context -> String
 formatError input ms cx =
