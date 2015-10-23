@@ -72,7 +72,7 @@ type Parser res
 
 
 {-| Unwrap a parser so it can be applied to a context. -}
-app : Parser res -> (Context -> (Result res, Context))
+app : Parser res -> ParseFn res
 app p =
   case p of
     Parser p ->
