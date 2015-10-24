@@ -5,7 +5,8 @@ module Combine ( Parser(..), ParseFn, Context, Result(..)
                , fail, succeed, string, regex, while, end
                , or, choice, optional, maybe, many, many1
                , sepBy, sepBy1, skip, skipMany, skipMany1
-               , between, parens, brackets, squareBrackets
+               , chainl, between, parens, brackets
+               , squareBrackets
                ) where
 
 {-| This library provides reasonably fast parser combinators.
@@ -22,7 +23,7 @@ module Combine ( Parser(..), ParseFn, Context, Result(..)
 @docs andThen, andMap
 
 # Parsers
-@docs fail, succeed, string, regex, while, end, or, choice, optional, maybe, many, many1, sepBy, sepBy1, skip, skipMany, skipMany1, between, parens, brackets, squareBrackets
+@docs fail, succeed, string, regex, while, end, or, choice, optional, maybe, many, many1, sepBy, sepBy1, skip, skipMany, skipMany1, chainl, between, parens, brackets, squareBrackets
 -}
 
 import Lazy as L
@@ -436,6 +437,20 @@ skipMany p = many (skip p) `andThen` (always <| succeed ())
 {-| Apply a parser and skip its result at least one. -}
 skipMany1 : Parser x -> Parser ()
 skipMany1 p = many1 (skip p) `andThen` (always <| succeed ())
+
+
+{-| Parse one or more occurences of `p` separated by `op`, recursively
+apply all functions returned by `op` to the values returned by `p`. See
+the `examples/Calc.elm` file for an example.
+-}
+chainl : Parser res -> Parser (res -> res -> res) -> Parser res
+chainl p op =
+  let
+    rest x =
+      (op `andThen` \f -> p
+          `andThen` \y -> rest (f x y)) `or` succeed x
+  in
+  p `andThen` rest
 
 
 {-| Parse something between two other parsers.
