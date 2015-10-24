@@ -4,8 +4,8 @@ module Combine ( Parser(..), ParseFn, Context, Result(..)
                , andThen, andMap
                , fail, succeed, string, regex, while, end
                , or, choice, optional, maybe, many, many1
-               , skip, skipMany, skipMany1, between
-               , parens, brackets, squareBrackets
+               , sepBy, sepBy1, skip, skipMany, skipMany1
+               , between, parens, brackets, squareBrackets
                ) where
 
 {-| This library provides reasonably fast parser combinators.
@@ -22,7 +22,7 @@ module Combine ( Parser(..), ParseFn, Context, Result(..)
 @docs andThen, andMap
 
 # Parsers
-@docs fail, succeed, string, regex, while, end, or, choice, optional, maybe, many, many1, skip, skipMany, skipMany1, between, parens, brackets, squareBrackets
+@docs fail, succeed, string, regex, while, end, or, choice, optional, maybe, many, many1, sepBy, sepBy1, skip, skipMany, skipMany1, between, parens, brackets, squareBrackets
 -}
 
 import Lazy as L
@@ -400,6 +400,27 @@ many p =
 many1 : Parser res -> Parser (List res)
 many1 p =
   (::) `map` p `andMap` many p
+
+
+{-| Parser zero or more occurences of one parser separated by another.
+
+    parse (sepBy (string ",") (string "a")) "b" ==
+      (Done [], { input = "b", position = 0 })
+
+    parse (sepBy (string ",") (string "a")) "a,a,a" ==
+      (Done ["a", "a", "a"], { input = "", position = 5 })
+
+    parse (sepBy (string ",") (string "a")) "a,a,b" ==
+      (Done ["a", "a"], { input = ",b", position = 3 })
+-}
+sepBy : Parser x -> Parser res -> Parser (List res)
+sepBy sep p = sepBy1 sep p `or` succeed []
+
+
+{-| Parse one or more occurences of one parser separated by another. -}
+sepBy1 : Parser x -> Parser res -> Parser (List res)
+sepBy1 sep p =
+  (::) `map` p `andMap` many ((flip always) `map` sep `andMap` p)
 
 
 {-| Apply a parser and skip its result. -}
