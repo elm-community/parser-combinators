@@ -4,7 +4,7 @@ module Combine.Infix where
 `Combine` module.
 
 # Transforming Parsers
-@docs (<$>), (<$), (<?>)
+@docs (<$>), (<*>), (<$), (<?>)
 
 # Chaining Parsers
 @docs (*>), (<*)
@@ -19,6 +19,11 @@ import Combine exposing (..)
 {-| Synonym for `Combine.map`. -}
 (<$>) : (res -> res') -> Parser res -> Parser res'
 (<$>) = map
+
+
+{-| Synonym for `Combine.andMap`. -}
+(<*>) : Parser (res -> res') -> Parser res -> Parser res'
+(<*>) = andMap
 
 
 {-| Variant of `Combine.map` that ignores the Parser's result. -}
