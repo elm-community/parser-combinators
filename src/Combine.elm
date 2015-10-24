@@ -5,7 +5,7 @@ module Combine ( Parser(..), ParseFn, Context, Result(..)
                , fail, succeed, string, regex, while, end
                , or, choice, optional, maybe, many, many1
                , sepBy, sepBy1, skip, skipMany, skipMany1
-               , chainl, between, parens, brackets
+               , chainl, chainr, between, parens, brackets
                , squareBrackets
                ) where
 
@@ -23,7 +23,7 @@ module Combine ( Parser(..), ParseFn, Context, Result(..)
 @docs andThen, andMap
 
 # Parsers
-@docs fail, succeed, string, regex, while, end, or, choice, optional, maybe, many, many1, sepBy, sepBy1, skip, skipMany, skipMany1, chainl, between, parens, brackets, squareBrackets
+@docs fail, succeed, string, regex, while, end, or, choice, optional, maybe, many, many1, sepBy, sepBy1, skip, skipMany, skipMany1, chainl, chainr, between, parens, brackets, squareBrackets
 -}
 
 import Lazy as L
@@ -446,11 +446,24 @@ the `examples/Calc.elm` file for an example.
 chainl : Parser res -> Parser (res -> res -> res) -> Parser res
 chainl p op =
   let
-    rest x =
+    accumulate x =
       (op `andThen` \f -> p
-          `andThen` \y -> rest (f x y)) `or` succeed x
+          `andThen` \y -> accumulate (f x y)) `or` succeed x
   in
-  p `andThen` rest
+  p `andThen` accumulate
+
+
+{-| Similar to `chainl` but functions of `op` are applied in
+right-associative order to the values of `p`. -}
+chainr : Parser res -> Parser (res -> res -> res) -> Parser res
+chainr p op =
+  let
+    accumulate x =
+      (op `andThen` \f -> p
+          `andThen` accumulate
+          `andThen` \y -> succeed (f x y)) `or` succeed x
+  in
+  p `andThen` accumulate
 
 
 {-| Parse something between two other parsers.
