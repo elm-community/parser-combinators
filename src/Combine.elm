@@ -5,8 +5,8 @@ module Combine ( Parser(..), ParseFn, Context, Result(..)
                , fail, succeed, string, regex, while, end
                , or, choice, optional, maybe, many, many1
                , sepBy, sepBy1, skip, skipMany, skipMany1
-               , chainl, chainr, between, parens, brackets
-               , squareBrackets
+               , chainl, chainr, count, between, parens
+               , brackets, squareBrackets
                ) where
 
 {-| This library provides reasonably fast parser combinators.
@@ -23,7 +23,7 @@ module Combine ( Parser(..), ParseFn, Context, Result(..)
 @docs andThen, andMap
 
 # Parsers
-@docs fail, succeed, string, regex, while, end, or, choice, optional, maybe, many, many1, sepBy, sepBy1, skip, skipMany, skipMany1, chainl, chainr, between, parens, brackets, squareBrackets
+@docs fail, succeed, string, regex, while, end, or, choice, optional, maybe, many, many1, sepBy, sepBy1, skip, skipMany, skipMany1, chainl, chainr, count, between, parens, brackets, squareBrackets
 -}
 
 import Lazy as L
@@ -464,6 +464,17 @@ chainr p op =
           `andThen` \y -> succeed (f x y)) `or` succeed x
   in
   p `andThen` accumulate
+
+
+{-| Parse `n` occurences of `p`. -}
+count : Int -> Parser res -> Parser (List res)
+count n p =
+  let
+    accumulate x acc =
+      if x <= 0
+      then succeed (List.reverse acc)
+      else p `andThen` \res -> accumulate (x - 1) (res :: acc)
+  in accumulate n []
 
 
 {-| Parse something between two other parsers.
