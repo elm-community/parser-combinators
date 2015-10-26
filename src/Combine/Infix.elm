@@ -4,10 +4,10 @@ module Combine.Infix where
 `Combine` module.
 
 # Transforming Parsers
-@docs (<$>), (<*>), (<$), (<?>)
+@docs (<$>), (<$), (<?>)
 
 # Chaining Parsers
-@docs (*>), (<*)
+@docs (<*>), (*>), (<*)
 
 # Parsers
 @docs (<|>)
