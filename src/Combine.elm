@@ -218,7 +218,7 @@ string s =
         len = String.length s
         rem = String.dropLeft len cx.input
         pos = cx.position + len
-      in (Done s, {cx | input <- rem, position <- pos})
+      in (Done s, {cx | input = rem, position = pos})
     else (Fail ["expected " ++ (toString s)], cx)
 
 
@@ -246,7 +246,7 @@ regex pattern =
           len = String.length match.match
           rem = String.dropLeft len cx.input
           pos = cx.position + len
-        in (Done match.match, {cx | input <- rem, position <- pos })
+        in (Done match.match, {cx | input = rem, position = pos })
 
       _ ->
         (Fail ["expected input matching Regexp /" ++ pattern' ++ "/"], cx)
@@ -268,7 +268,7 @@ while pred =
             let
               c = String.cons h ""
               pos = cx.position + 1
-            in accumulate (acc ++ c) {cx | input <- rest, position <- pos}
+            in accumulate (acc ++ c) {cx | input = rest, position = pos}
           else (acc, cx)
 
         Nothing ->

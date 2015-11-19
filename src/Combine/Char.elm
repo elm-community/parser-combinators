@@ -27,7 +27,7 @@ satisfy pred =
     case String.uncons cx.input of
       Just (h, rest) ->
         if pred h
-        then (Done h, { cx | input <- rest, position <- cx.position + 1 })
+        then (Done h, { cx | input = rest, position = cx.position + 1 })
         else (Fail [message], cx)
 
       Nothing ->

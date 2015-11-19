@@ -56,8 +56,10 @@ dropWhile : (a -> Bool) -> List a -> List a
 dropWhile p xs =
   case xs of
     []     -> []
-    x::xs' -> if | (p x) -> dropWhile p xs'
-                 | otherwise -> xs
+    x::xs' ->
+     if p x
+     then dropWhile p xs'
+     else xs
 
 comment : Parser String
 comment = regex "#[^\n]*"
@@ -273,6 +275,9 @@ indent cx =
       (Done s, _) ->
         let level = String.length s in
         case cx of
+          [] ->
+            (Fail ["negative indentation"], pcx)
+
           x::_ ->
             if level > x
             then (Done (level::cx, ()), pcx)

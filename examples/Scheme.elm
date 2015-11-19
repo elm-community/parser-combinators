@@ -4,7 +4,6 @@ import Combine exposing (..)
 import Combine.Char exposing (..)
 import Combine.Infix exposing (..)
 import Combine.Num
-import Debug
 import String
 
 type E
