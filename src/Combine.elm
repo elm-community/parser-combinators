@@ -434,7 +434,7 @@ skipMany : Parser x -> Parser ()
 skipMany p = many (skip p) `andThen` (always <| succeed ())
 
 
-{-| Apply a parser and skip its result at least one. -}
+{-| Apply a parser and skip its result at least once. -}
 skipMany1 : Parser x -> Parser ()
 skipMany1 p = many1 (skip p) `andThen` (always <| succeed ())
 
