@@ -403,6 +403,34 @@ many1 p =
   (::) `map` p `andMap` many p
 
 
+{-| Applies parser `p` zero or more times until parser `end` succeeds.
+
+Returns the list of values returned by `p`.
+
+This parser can be used to scan comments:
+
+    (string "<!--" *> manyTill anyChar (string "-->"))
+-}
+manyTill : Parser a -> Parser b -> Parser (List a)
+manyTill p end =
+  let
+    loop acc =
+      Parser <| \cx ->
+        case app end cx of
+          (Fail err, cx) ->
+            case app p cx of
+              (Done c, cx') ->
+                app (loop (c::acc)) cx'
+
+              (Fail _, _) ->
+                (Fail err, cx)
+
+          (Done succ, cx') ->
+            (Done (List.reverse acc), cx')
+  in
+    loop []
+
+
 {-| Parser zero or more occurences of one parser separated by another.
 
     parse (sepBy (string ",") (string "a")) "b" ==
