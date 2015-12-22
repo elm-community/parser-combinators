@@ -3,7 +3,7 @@ module Combine ( Parser(..), ParseFn, Context, Result(..)
                , bimap, map, mapError
                , andThen, andMap
                , fail, succeed, string, regex, while, end
-               , or, choice, optional, maybe, many, many1
+               , or, choice, optional, maybe, many, many1, manyTill
                , sepBy, sepBy1, skip, skipMany, skipMany1
                , chainl, chainr, count, between, parens
                , brackets, squareBrackets
@@ -23,7 +23,7 @@ module Combine ( Parser(..), ParseFn, Context, Result(..)
 @docs andThen, andMap
 
 # Parsers
-@docs fail, succeed, string, regex, while, end, or, choice, optional, maybe, many, many1, sepBy, sepBy1, skip, skipMany, skipMany1, chainl, chainr, count, between, parens, brackets, squareBrackets
+@docs fail, succeed, string, regex, while, end, or, choice, optional, maybe, many, many1, manyTill, sepBy, sepBy1, skip, skipMany, skipMany1, chainl, chainr, count, between, parens, brackets, squareBrackets
 -}
 
 import Lazy as L
