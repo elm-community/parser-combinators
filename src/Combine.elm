@@ -411,24 +411,23 @@ This parser can be used to scan comments:
 
     (string "<!--" *> manyTill anyChar (string "-->"))
 -}
-manyTill : Parser a -> Parser b -> Parser (List a)
+manyTill : Parser res -> Parser end -> Parser (List res)
 manyTill p end =
   let
-    loop acc =
-      Parser <| \cx ->
-        case app end cx of
-          (Fail err, cx) ->
-            case app p cx of
-              (Done c, cx') ->
-                app (loop (c::acc)) cx'
+    accumulate acc cx =
+      case app end cx of
+        (Fail err, cx) ->
+          case app p cx of
+            (Done res, cx') ->
+              accumulate (res :: acc) cx'
 
-              (Fail _, _) ->
-                (Fail err, cx)
+            _ ->
+              (Fail err, cx)
 
-          (Done succ, cx') ->
-            (Done (List.reverse acc), cx')
+        (Done _, cx') ->
+          (Done (List.reverse acc), cx')
   in
-    loop []
+    Parser <| accumulate []
 
 
 {-| Parser zero or more occurences of one parser separated by another.
