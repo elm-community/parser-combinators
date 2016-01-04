@@ -1,4 +1,4 @@
-module Combine ( Parser(..), Context
+module Combine ( Parser, Context, primitive
                , parse, app, rec
                , bimap, map, mapError
                , andThen, andMap
@@ -12,6 +12,9 @@ module Combine ( Parser(..), Context
 {-| This library provides reasonably fast parser combinators.
 
 @docs Parser, Context
+
+# Constructing Parsers
+@docs primitive
 
 # Running a Parser
 @docs parse, app, rec
@@ -68,6 +71,11 @@ eager and lazy parsers. -}
 type Parser res
   = Parser (ParseFn res)
   | RecursiveParser (L.Lazy (ParseFn res))
+
+
+{-| Construct a new primitive Parser. -}
+primitive : (Context -> (Result res, Context)) -> Parser res
+primitive = Parser
 
 
 {-| Unwrap a parser so it can be applied to a context. -}

@@ -146,7 +146,7 @@ program =
           (Err ms, cx') ->
             (Err ms, cx')
   in
-  Parser <| all []
+    primitive <| all []
 
 formatError : String -> List String -> Context -> String
 formatError input ms cx =

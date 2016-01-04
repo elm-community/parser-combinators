@@ -270,7 +270,7 @@ indentation cx p =
 
 indent : Ctx -> Parser (Ctx, ())
 indent cx =
-  Parser <| \pcx ->
+  primitive <| \pcx ->
     case Combine.app spaces pcx of
       (Ok s, _) ->
         let level = String.length s in
@@ -288,7 +288,7 @@ indent cx =
 
 dedent : Ctx -> Parser (Ctx, ())
 dedent cx =
-  Parser <| \pcx ->
+  primitive <| \pcx ->
     case Combine.app spaces pcx of
       (Ok s, _) ->
         let cx' = dropWhile ((/=) (String.length s)) cx in
@@ -369,7 +369,8 @@ program =
           (Err ms, pcx') ->
             (Err ms, pcx')
   in
-  Parser <| all [] [0]
+    primitive <| all [] [0]
+
 
 formatError : String -> List String -> Context -> String
 formatError input ms cx =

@@ -22,7 +22,7 @@ import String
 -}
 satisfy : (Char -> Bool) -> Parser Char
 satisfy pred =
-  Parser <| \cx ->
+  primitive <| \cx ->
     let message = "could not satisfy predicate" in
     case String.uncons cx.input of
       Just (h, rest) ->
