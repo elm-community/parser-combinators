@@ -1,0 +1,7 @@
+language: haskell
+install:
+  - npm install -g elm elm-test
+before_script:
+  - cd tests
+  - elm-package install -y
+script: elm-test TestRunner.elm
