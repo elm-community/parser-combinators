@@ -35,7 +35,7 @@ import Combine exposing (..)
 with a List of a single string.
 
     parse (string "a" <?> "gimme an 'a'") "b" ==
-      (Fail ["gimme an 'a'"], { input = "b", position = 0 })
+      (Err ["gimme an 'a'"], { input = "b", position = 0 })
 -}
 (<?>) : Parser res -> String -> Parser res
 (<?>) p m = mapError (\_ -> [m]) p
@@ -46,7 +46,7 @@ with a List of a single string.
     unsuffix : Parser String
     unsuffix = regex "[a-z]" <* regex "[!?]"
 
-    parse unsuffix "a!" == (Done "a", { input = "", position = 2 })
+    parse unsuffix "a!" == (Ok "a", { input = "", position = 2 })
 -}
 (<*) : Parser res -> Parser x -> Parser res
 (<*) lp rp =
@@ -58,7 +58,7 @@ with a List of a single string.
     unprefix : Parser String
     unprefix = string ">" *> while ((==) ' ') *> while ((/=) ' ')
 
-    parse unprefix "> a" == (Done "a", { input = "", position = 3 })
+    parse unprefix "> a" == (Ok "a", { input = "", position = 3 })
 -}
 (*>) : Parser x -> Parser res -> Parser res
 (*>) lp rp =

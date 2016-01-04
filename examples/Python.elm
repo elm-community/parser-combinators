@@ -272,35 +272,35 @@ indent : Ctx -> Parser (Ctx, ())
 indent cx =
   Parser <| \pcx ->
     case Combine.app spaces pcx of
-      (Done s, _) ->
+      (Ok s, _) ->
         let level = String.length s in
         case cx of
           [] ->
-            (Fail ["negative indentation"], pcx)
+            (Err ["negative indentation"], pcx)
 
           x::_ ->
             if level > x
-            then (Done (level::cx, ()), pcx)
-            else (Fail ["expected indentation"], pcx)
+            then (Ok (level::cx, ()), pcx)
+            else (Err ["expected indentation"], pcx)
 
-      (Fail ms, pcx) ->
-        (Fail ms, pcx)
+      (Err ms, pcx) ->
+        (Err ms, pcx)
 
 dedent : Ctx -> Parser (Ctx, ())
 dedent cx =
   Parser <| \pcx ->
     case Combine.app spaces pcx of
-      (Done s, _) ->
+      (Ok s, _) ->
         let cx' = dropWhile ((/=) (String.length s)) cx in
         case cx' of
           _::_ ->
-            (Done (cx', ()), pcx)
+            (Ok (cx', ()), pcx)
 
           _ ->
-            (Fail ["unindent does not match any outer indentation level"], pcx)
+            (Err ["unindent does not match any outer indentation level"], pcx)
 
-      (Fail ms, pcx) ->
-        (Fail ms, pcx)
+      (Err ms, pcx) ->
+        (Err ms, pcx)
 
 block : Ctx -> Parser (Ctx, List C)
 block cx =
@@ -360,14 +360,14 @@ program =
   let
     all acc cx pcx =
       if pcx.input == ""
-      then (Done (List.reverse acc), pcx)
+      then (Ok (List.reverse acc), pcx)
       else
         case Combine.app (stmt cx) pcx of
-          (Done (cx', res'), pcx') ->
+          (Ok (cx', res'), pcx') ->
             all (res' :: acc) cx' pcx'
 
-          (Fail ms, pcx') ->
-            (Fail ms, pcx')
+          (Err ms, pcx') ->
+            (Err ms, pcx')
   in
   Parser <| all [] [0]
 
@@ -400,10 +400,10 @@ formatError input ms cx =
 parse : String -> Result.Result String (List C)
 parse s =
   case Combine.parse program (s ++ "\n") of
-    (Done es, _) ->
+    (Ok es, _) ->
       Ok es
 
-    (Fail ms, cx) ->
+    (Err ms, cx) ->
       Err <| formatError s ms cx
 
 test : Result.Result String (List C)

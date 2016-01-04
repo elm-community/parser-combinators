@@ -25,8 +25,8 @@ factor = rec <| \() -> between ws ws (parens expr <|> int)
 calc : String -> Result.Result String Int
 calc s =
   case parse (expr <* end) s of
-    (Done n, _) ->
+    (Ok n, _) ->
       Ok n
 
-    (Fail ms, cx) ->
+    (Err ms, cx) ->
       Err ("parse error: " ++ (toString ms) ++ ", " ++ (toString cx))

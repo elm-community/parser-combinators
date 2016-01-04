@@ -137,14 +137,14 @@ program =
   let
     all acc cx =
       if cx.input == ""
-      then (Done (List.reverse acc), cx)
+      then (Ok (List.reverse acc), cx)
       else
         case app expr cx of
-          (Done res', cx') ->
+          (Ok res', cx') ->
             all (res' :: acc) cx'
 
-          (Fail ms, cx') ->
-            (Fail ms, cx')
+          (Err ms, cx') ->
+            (Err ms, cx')
   in
   Parser <| all []
 
@@ -177,8 +177,8 @@ formatError input ms cx =
 parse : String -> Result.Result String (List E)
 parse s =
   case Combine.parse program s of
-    (Done e, _) ->
+    (Ok e, _) ->
       Ok e
 
-    (Fail ms, cx) ->
+    (Err ms, cx) ->
       Err <| formatError s ms cx
