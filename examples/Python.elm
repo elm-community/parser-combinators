@@ -119,7 +119,7 @@ listSep = regex ",[ \t\r\n]*"
 list : Parser E
 list =
   rec <| \() ->
-      EList <$> squareBrackets (sepBy listSep expr) <?> "list"
+      EList <$> brackets (sepBy listSep expr) <?> "list"
 
 tuple : Parser E
 tuple =

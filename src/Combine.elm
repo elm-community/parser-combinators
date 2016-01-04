@@ -531,11 +531,11 @@ parens : Parser res -> Parser res
 parens = between (string "(") (string ")")
 
 
-{-| Parse something between brackets. -}
+{-| Parse something between braces `{}`. -}
+braces : Parser res -> Parser res
+braces = between (string "{") (string "}")
+
+
+{-| Parse something between square brackets `[]`. -}
 brackets : Parser res -> Parser res
-brackets = between (string "{") (string "}")
-
-
-{-| Parse something between square brackets. -}
-squareBrackets : Parser res -> Parser res
-squareBrackets = between (string "[") (string "]")
+brackets = between (string "[") (string "]")
