@@ -1,4 +1,9 @@
-module Calc where
+module Calc (calc) where
+
+{-| An example parser that computes arithmetic expressions.
+
+@docs calc
+-}
 
 import Combine exposing (..)
 import Combine.Infix exposing (..)
@@ -22,6 +27,7 @@ term = rec <| \() -> factor `chainl` mulop
 factor : Parser Int
 factor = rec <| \() -> between ws ws (parens expr <|> int)
 
+{-| Compute the result of an expression. -}
 calc : String -> Result.Result String Int
 calc s =
   case parse (expr <* end) s of
