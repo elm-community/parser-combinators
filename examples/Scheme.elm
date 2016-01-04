@@ -174,7 +174,7 @@ formatError input ms cx =
     ++ expectationSeparator
     ++ String.join expectationSeparator ms
 
-parse : String -> Result.Result String (List E)
+parse : String -> Result String (List E)
 parse s =
   case Combine.parse program s of
     (Ok e, _) ->

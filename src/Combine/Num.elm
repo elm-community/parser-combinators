@@ -14,7 +14,7 @@ import Debug exposing (crash)
 import String
 
 
-unwrap : (String -> Result.Result x res) -> String -> res
+unwrap : (String -> Result x res) -> String -> res
 unwrap f s =
   case f s of
     Ok res ->

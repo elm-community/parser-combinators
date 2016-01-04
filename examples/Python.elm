@@ -398,7 +398,7 @@ formatError input ms cx =
     ++ expectationSeparator
     ++ String.join expectationSeparator ms
 
-parse : String -> Result.Result String (List C)
+parse : String -> Result String (List C)
 parse s =
   case Combine.parse program (s ++ "\n") of
     (Ok es, _) ->
@@ -407,7 +407,7 @@ parse s =
     (Err ms, cx) ->
       Err <| formatError s ms cx
 
-test : Result.Result String (List C)
+test : Result String (List C)
 test =
   parse """import os
 

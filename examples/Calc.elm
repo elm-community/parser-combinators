@@ -28,7 +28,7 @@ factor : Parser Int
 factor = rec <| \() -> between ws ws (parens expr <|> int)
 
 {-| Compute the result of an expression. -}
-calc : String -> Result.Result String Int
+calc : String -> Result String Int
 calc s =
   case parse (expr <* end) s of
     (Ok n, _) ->
