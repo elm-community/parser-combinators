@@ -70,7 +70,7 @@ oneOf : List Char -> Parser Char
 oneOf cs = satisfy (flip List.member cs) <?> ("expected one of " ++ (toString cs))
 
 
-{-| Parse a character from the given list.
+{-| Parse a character that is not in the given list.
 
     parse (noneOf ['a', 'b']) "c" ==
       (Ok 'c', { input = "", position = 1 })
@@ -88,7 +88,7 @@ space : Parser Char
 space = satisfy ((==) ' ') <?> "expected space"
 
 
-{-| Parses a `\t` character. -}
+{-| Parse a `\t` character. -}
 tab : Parser Char
 tab = satisfy ((==) '\t') <?> "expected tab"
 
@@ -98,36 +98,36 @@ newline : Parser Char
 newline = satisfy ((==) '\n') <?> "expected newline"
 
 
-{-| Parse a `\r\n` sequence. Returns a `\n` character. -}
+{-| Parse a `\r\n` sequence, returning a `\n` character. -}
 crlf : Parser Char
 crlf = '\n' <$ regex "\r\n" <?> "expected crlf"
 
 
-{-| Parses an end of line character or sequence. Returns a `\n` character. -}
+{-| Parse an end of line character or sequence, returning a `\n` character. -}
 eol : Parser Char
 eol = newline <|> crlf
 
 
-{-| Parses any lowercase character. -}
+{-| Parse any lowercase character. -}
 lower : Parser Char
 lower = satisfy Char.isLower <?> "expected a lowercase character"
 
 
-{-| Parses any uppercase character. -}
+{-| Parse any uppercase character. -}
 upper : Parser Char
 upper = satisfy Char.isUpper <?> "expected an uppercase character"
 
 
-{-| Parses any base 10 digit. -}
+{-| Parse any base 10 digit. -}
 digit : Parser Char
 digit = satisfy Char.isDigit <?> "expected a digit"
 
 
-{-| Parses any base 8 digit. -}
+{-| Parse any base 8 digit. -}
 octDigit : Parser Char
 octDigit = satisfy Char.isOctDigit <?> "expected an octal digit"
 
 
-{-| Parses any base 16 digit. -}
+{-| Parse any base 16 digit. -}
 hexDigit : Parser Char
 hexDigit = satisfy Char.isHexDigit <?> "expected a hexadecimal digit"

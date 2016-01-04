@@ -6,7 +6,7 @@ module Combine ( Parser, Context, primitive
                , or, choice, optional, maybe, many, many1, manyTill
                , sepBy, sepBy1, skip, skipMany, skipMany1
                , chainl, chainr, count, between, parens
-               , brackets, squareBrackets
+               , braces, brackets
                ) where
 
 {-| This library provides reasonably fast parser combinators.
@@ -26,7 +26,7 @@ module Combine ( Parser, Context, primitive
 @docs andThen, andMap
 
 # Parsers
-@docs fail, succeed, string, regex, while, end, or, choice, optional, maybe, many, many1, manyTill, sepBy, sepBy1, skip, skipMany, skipMany1, chainl, chainr, count, between, parens, brackets, squareBrackets
+@docs fail, succeed, string, regex, while, end, or, choice, optional, maybe, many, many1, manyTill, sepBy, sepBy1, skip, skipMany, skipMany1, chainl, chainr, count, between, parens, braces, brackets
 -}
 
 import Lazy as L
@@ -34,7 +34,7 @@ import String
 import Regex exposing (Regex(..))
 
 
-{-| The contex over which `ParseFn`s operate. -}
+{-| The contex over which `Parser`s operate. -}
 type alias Context =
   { input : String
   , position : Int
@@ -47,33 +47,29 @@ type alias Context =
 it) to a result, or
 * `Err` when the parser has failed with a list of error messages.
 -}
-type alias Result res = Result.Result (List String) res
+type alias Result res =
+  Result.Result (List String) res
 
 
-{-| At their core, Parsers are functions from a `Context` to a
-tuple of a `Result` and a new `Context`.
-
-    myParseFn : ParseFn Int
-    myParseFn c = (Ok 1, c)
-
-    myParser : Parser Int
-    myParser = Parser myParseFn
-
-    parse myParser "a" ==
-      (Ok 1, { input = "a", position = 0 })
--}
 type alias ParseFn res =
   Context -> (Result res, Context)
 
 
-{-| A wrapper type around `ParseFn`s used to differentiate between
-eager and lazy parsers. -}
+{-| The Parser type.
+
+At their core, `Parser`s simply wrap functions from a `Context` to a
+tuple of a `Result res` and a new `Context`. -}
 type Parser res
   = Parser (ParseFn res)
   | RecursiveParser (L.Lazy (ParseFn res))
 
 
-{-| Construct a new primitive Parser. -}
+{-| Construct a new primitive Parser.
+
+If you find yourself reaching for this function often consider opening
+a [Github issue](https://github.com/Bogdanp/elm-combine/issues) with
+the library to have your custom Parsers included in the standard
+distribution. -}
 primitive : (Context -> (Result res, Context)) -> Parser res
 primitive = Parser
 
@@ -89,7 +85,16 @@ app p =
       L.force t
 
 
-{-| Parse a string. -}
+{-| Parse a string.
+
+    import Combine.Num exposing (int)
+
+    parse int "123" ==
+      (Ok 123, { input = "", position = 3 })
+
+    parse int "abc" ==
+      (Err ["expected an integer"], { input = "abc", position = 0 })
+ -}
 parse : Parser res -> String -> (Result res, Context)
 parse p input = app p { input = input, position = 0 }
 
@@ -154,8 +159,25 @@ mapError : (List String -> List String) -> Parser res -> Parser res
 mapError = bimap identity
 
 
-{-| Sequence two parsers by passing in the results of the first parser
-to the second. -}
+{-| Sequence two parsers, passing the result of the first parser to a
+function that returns the second parser. The value of the second
+parser is returned on success.
+
+    import Combine.Num exposing (int)
+
+    choosy : Parser String
+    choosy =
+      int
+        `andThen` \x -> if x % 2 == 0
+                        then string " is even"
+                        else string " is odd"
+
+    parse choosy "1 is odd" ==
+      (Ok " is odd", { input = "", position = 8 })
+
+    parse choosy "1 is even" ==
+      (Err ["expected \" is odd\""], { input = " is even", position = 1 })
+-}
 andThen : Parser res -> (res -> Parser res') -> Parser res'
 andThen p f =
   Parser <| \cx ->
@@ -165,7 +187,6 @@ andThen p f =
 
       (Err m, cx) ->
         (Err m, cx)
-
 
 {-| Sequence two parsers.
 
@@ -189,7 +210,7 @@ andMap lp rp =
     `andThen` \x -> succeed (f x)
 
 
-{-| Err without consuming any input. -}
+{-| Fail without consuming any input. -}
 fail : List String -> Parser res
 fail ms =
   Parser <| \cx ->
@@ -245,17 +266,16 @@ regex pattern =
       then pattern
       else "^" ++ pattern
   in
-  Parser <| \cx ->
-    case Regex.find (Regex.AtMost 1) (Regex.regex pattern') cx.input of
-      [match] ->
-        let
-          len = String.length match.match
-          rem = String.dropLeft len cx.input
-          pos = cx.position + len
-        in (Ok match.match, {cx | input = rem, position = pos })
-
-      _ ->
-        (Err ["expected input matching Regexp /" ++ pattern' ++ "/"], cx)
+    Parser <| \cx ->
+      case Regex.find (Regex.AtMost 1) (Regex.regex pattern') cx.input of
+        [match] ->
+          let
+            len = String.length match.match
+            rem = String.dropLeft len cx.input
+            pos = cx.position + len
+          in (Ok match.match, {cx | input = rem, position = pos })
+        _ ->
+          (Err ["expected input matching Regexp /" ++ pattern' ++ "/"], cx)
 
 
 {-| Consume input while the predicate matches.
@@ -285,7 +305,7 @@ while pred =
       (Ok res, cx')
 
 
-{-| Err when the input is not empty.
+{-| Fail when the input is not empty.
 
     parse end "" == (Ok (), { input = "", position = 0 })
     parse end "a" == (Err ["expected end of input"], { input = "a", position = 0 })
@@ -409,13 +429,10 @@ many1 p =
   (::) `map` p `andMap` many p
 
 
-{-| Applies parser `p` zero or more times until parser `end` succeeds.
+{-| Apply parser `p` zero or more times until parser `end`
+succeeds. On success, the list of `p`'s results is returned.
 
-Returns the list of values returned by `p`.
-
-This parser can be used to scan comments:
-
-    (string "<!--" *> manyTill anyChar (string "-->"))
+    string "<!--" *> manyTill anyChar (string "-->")
 -}
 manyTill : Parser res -> Parser end -> Parser (List res)
 manyTill p end =
