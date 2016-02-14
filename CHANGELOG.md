@@ -1,5 +1,11 @@
 # elm-combine changelog
 
+## elm-combine 2.0.1
+
+### Fixes
+
+* Fixed issue [8](https://github.com/Bogdanp/elm-combine/issues/8).
+
 ## elm-combine 2.0.0
 
 ### Changes
