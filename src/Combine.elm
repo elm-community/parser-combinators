@@ -406,7 +406,10 @@ many p =
     accumulate acc cx =
       case app p cx of
         (Ok res, cx') ->
-          accumulate (res :: acc) cx'
+          if cx == cx' then
+            (List.reverse acc, cx)
+          else
+            accumulate (res :: acc) cx'
 
         _ ->
           (List.reverse acc, cx)
