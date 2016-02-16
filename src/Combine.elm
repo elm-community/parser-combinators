@@ -134,11 +134,11 @@ bimap : (res -> res')
 bimap fok ferr p =
   Parser <| \cx ->
     case app p cx of
-      (Ok r, cx) ->
-        (Ok (fok r), cx)
+      (Ok r, cx') ->
+        (Ok (fok r), cx')
 
-      (Err m, c) ->
-        (Err (ferr m), cx)
+      (Err m, cx') ->
+        (Err (ferr m), cx')
 
 
 {-| Transform the result of a parser.
