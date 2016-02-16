@@ -182,11 +182,11 @@ andThen : Parser res -> (res -> Parser res') -> Parser res'
 andThen p f =
   Parser <| \cx ->
     case app p cx of
-      (Ok res, cx) ->
-        app (f res) cx
+      (Ok res, cx') ->
+        app (f res) cx'
 
-      (Err m, cx) ->
-        (Err m, cx)
+      (Err m, cx') ->
+        (Err m, cx')
 
 {-| Sequence two parsers.
 
