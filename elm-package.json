@@ -1,5 +1,5 @@
 {
-    "version": "2.0.1",
+    "version": "2.0.2",
     "summary": "A parser combinator library",
     "repository": "https://github.com/Bogdanp/elm-combine.git",
     "license": "BSD3",
