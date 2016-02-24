@@ -442,16 +442,16 @@ manyTill p end =
   let
     accumulate acc cx =
       case app end cx of
-        (Err err, cx) ->
+        (Ok _, ecx) ->
+          (Ok (List.reverse acc), ecx)
+
+        (Err err, ecx) ->
           case app p cx of
-            (Ok res, cx') ->
-              accumulate (res :: acc) cx'
+            (Ok res, pcx) ->
+              accumulate (res :: acc) pcx
 
             _ ->
-              (Err err, cx)
-
-        (Ok _, cx') ->
-          (Ok (List.reverse acc), cx')
+              (Err err, ecx)
   in
     Parser <| accumulate []
 

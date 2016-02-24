@@ -1,7 +1,11 @@
 module Tests where
 
-import Calc exposing (calc)
 import ElmTest exposing (..)
+
+import Calc exposing (calc)
+import Combine exposing (..)
+import Combine.Char exposing (..)
+import Combine.Infix exposing (..)
 import String
 
 
@@ -25,9 +29,29 @@ calcSuite =
       ]
 
 
+manyTillSuite : Test
+manyTillSuite =
+  suite
+    "manyTill tests"
+    [ test "Example"
+        <| assertEqual
+             (parse (string "<!--" *> manyTill anyChar (string "-->")) "<!-- test -->")
+             (Ok [' ', 't', 'e', 's', 't', ' '], { input = "", position = 13 })
+    , test "Backtracking"
+        <| assertEqual
+             (parse (manyTill anyChar ((many space) *> eol)) "a b c\n")
+             (Ok [ 'a', ' ', 'b', ' ', 'c' ], { input = "", position = 6 })
+    , test "Backtracking 2"
+        <| assertEqual
+             (parse (manyTill anyChar ((many space) *> eol)) "a b c  \n")
+             (Ok [ 'a', ' ', 'b', ' ', 'c' ], { input = "", position = 8 })
+    ]
+
+
 all : Test
 all =
   suite
     "Combine test suite"
     [ calcSuite
+    , manyTillSuite
     ]
