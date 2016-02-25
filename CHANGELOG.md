@@ -5,6 +5,7 @@
 ### Fixes
 
 * Fixed issue [10](https://github.com/Bogdanp/elm-combine/issues/10).
+* Fixed an issue with `mapError` where the incorrect context was returned.
 
 ## elm-combine 2.0.1
 
