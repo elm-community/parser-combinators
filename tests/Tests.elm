@@ -48,10 +48,58 @@ manyTillSuite =
     ]
 
 
+sepEndBySuite : Test
+sepEndBySuite =
+  suite
+    "manyTill tests"
+    [ test "sepEndBy 1"
+        <| assertEqual
+             (parse (sepEndBy (string ",") (string "a")) "b")
+             (Ok [], { input = "b", position = 0 })
+    , test "sepEndBy 2"
+        <| assertEqual
+             (parse (sepEndBy (string ",") (string "a")) "a,a,a")
+             (Ok ["a", "a", "a"], { input = "", position = 5 })
+    , test "sepEndBy 3"
+        <| assertEqual
+             (parse (sepEndBy (string ",") (string "a")) "a,a,a,")
+             (Ok ["a", "a", "a"], { input = "", position = 6 })
+    , test "sepEndBy 4"
+        <| assertEqual
+             (parse (sepEndBy (string ",") (string "a")) "a,a,b")
+             (Ok ["a", "a"], { input = "b", position = 4 })
+    ]
+
+
+sepEndBy1Suite : Test
+sepEndBy1Suite =
+  suite
+    "manyTill tests"
+    [ test "sepEndBy1 1"
+        <| assertEqual
+             (parse (sepEndBy1 (string ",") (string "a")) "b")
+             (Err (["expected \"a\""]),{ input = "b", position = 0 })
+    , test "sepEndBy1 2"
+        <| assertEqual
+             (parse (sepEndBy1 (string ",") (string "a")) "a,a,a")
+             (Ok ["a", "a", "a"], { input = "", position = 5 })
+    , test "sepEndBy1 3"
+        <| assertEqual
+             (parse (sepEndBy1 (string ",") (string "a")) "a,a,a,")
+             (Ok ["a", "a", "a"], { input = "", position = 6 })
+    , test "sepEndBy1 4"
+        <| assertEqual
+             (parse (sepEndBy1 (string ",") (string "a")) "a,a,b")
+             (Ok ["a", "a"], { input = "b", position = 4 })
+    ]
+
+
 all : Test
 all =
   suite
     "Combine test suite"
     [ calcSuite
     , manyTillSuite
+    , sepEndBySuite
+    , sepEndBy1Suite
     ]
