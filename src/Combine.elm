@@ -4,7 +4,7 @@ module Combine ( Parser, Context, primitive
                , andThen, andMap
                , fail, succeed, string, regex, while, end
                , or, choice, optional, maybe, many, many1, manyTill
-               , sepBy, sepBy1, skip, skipMany, skipMany1
+               , sepBy, sepBy1, sepEndBy, sepEndBy1, skip, skipMany, skipMany1
                , chainl, chainr, count, between, parens
                , braces, brackets
                ) where
@@ -26,7 +26,7 @@ module Combine ( Parser, Context, primitive
 @docs andThen, andMap
 
 # Parsers
-@docs fail, succeed, string, regex, while, end, or, choice, optional, maybe, many, many1, manyTill, sepBy, sepBy1, skip, skipMany, skipMany1, chainl, chainr, count, between, parens, braces, brackets
+@docs fail, succeed, string, regex, while, end, or, choice, optional, maybe, many, many1, manyTill, sepBy, sepBy1, sepEndBy, sepEndBy1, skip, skipMany, skipMany1, chainl, chainr, count, between, parens, braces, brackets
 -}
 
 import Lazy as L
@@ -475,6 +475,29 @@ sepBy sep p = sepBy1 sep p `or` succeed []
 sepBy1 : Parser x -> Parser res -> Parser (List res)
 sepBy1 sep p =
   (::) `map` p `andMap` many ((flip always) `map` sep `andMap` p)
+
+
+{-| Parser zero or more occurences of one parser separated and optionally ended by another.
+
+    parse (sepEndBy (string ",") (string "a")) "a,a,a," ==
+      (Ok ["a", "a", "a"], { input = "", position = 6 })
+-}
+sepEndBy : Parser x -> Parser res -> Parser (List res)
+sepEndBy sep p =
+  sepEndBy1 sep p `or` succeed []
+
+
+{-| Parser one or more occurences of one parser separated and optionally ended by another. -}
+sepEndBy1 : Parser x -> Parser res -> Parser (List res)
+sepEndBy1 sep p =
+  p
+    `andThen` \x ->
+                ((flip always)
+                  `map` sep
+                  `andMap` sepEndBy sep p
+                  `andThen` \xs ->
+                              succeed (x :: xs))
+                `or` succeed [ x ]
 
 
 {-| Apply a parser and skip its result. -}
