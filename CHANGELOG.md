@@ -1,5 +1,11 @@
 # elm-combine changelog
 
+## elm-combine 2.1.0 (2016-02-28)
+
+### Additions
+
+* Added `sepEndBy` and `sepEndBy1` (contributed by @prt2121)
+
 ## elm-combine 2.0.2
 
 ### Fixes
