@@ -468,7 +468,8 @@ manyTill p end =
       (Ok ["a", "a"], { input = ",b", position = 3 })
 -}
 sepBy : Parser x -> Parser res -> Parser (List res)
-sepBy sep p = sepBy1 sep p `or` succeed []
+sepBy sep p =
+  sepBy1 sep p `or` succeed []
 
 
 {-| Parse one or more occurences of one parser separated by another. -}
@@ -477,7 +478,8 @@ sepBy1 sep p =
   (::) `map` p `andMap` many ((flip always) `map` sep `andMap` p)
 
 
-{-| Parser zero or more occurences of one parser separated and optionally ended by another.
+{-| Parse zero or more occurences of one parser separated and
+optionally ended by another.
 
     parse (sepEndBy (string ",") (string "a")) "a,a,a," ==
       (Ok ["a", "a", "a"], { input = "", position = 6 })
@@ -487,17 +489,21 @@ sepEndBy sep p =
   sepEndBy1 sep p `or` succeed []
 
 
-{-| Parser one or more occurences of one parser separated and optionally ended by another. -}
+{-| Parse one or more occurences of one parser separated and
+optionally ended by another.
+
+    parse (sepEndBy1 (string ",") (string "a")) "" ==
+      (Err ["expected \"a\""], { input = "", position = 0 })
+
+    parse (sepEndBy1 (string ",") (string "a")) "a" ==
+      (Ok ["a"], { input = "", position = 1 })
+
+    parse (sepEndBy1 (string ",") (string "a")) "a," ==
+      (Ok ["a"], { input = "", position = 2 })
+-}
 sepEndBy1 : Parser x -> Parser res -> Parser (List res)
 sepEndBy1 sep p =
-  p
-    `andThen` \x ->
-                ((flip always)
-                  `map` sep
-                  `andMap` sepEndBy sep p
-                  `andThen` \xs ->
-                              succeed (x :: xs))
-                `or` succeed [ x ]
+  always `map` sepBy1 sep p `andMap` maybe sep
 
 
 {-| Apply a parser and skip its result. -}
