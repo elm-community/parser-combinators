@@ -51,7 +51,7 @@ manyTillSuite =
 sepEndBySuite : Test
 sepEndBySuite =
   suite
-    "manyTill tests"
+    "sepEndBy tests"
     [ test "sepEndBy 1"
         <| assertEqual
              (parse (sepEndBy (string ",") (string "a")) "b")
@@ -74,7 +74,7 @@ sepEndBySuite =
 sepEndBy1Suite : Test
 sepEndBy1Suite =
   suite
-    "manyTill tests"
+    "sepEndBy1 tests"
     [ test "sepEndBy1 1"
         <| assertEqual
              (parse (sepEndBy1 (string ",") (string "a")) "b")
