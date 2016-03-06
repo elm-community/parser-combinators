@@ -6,7 +6,6 @@ import Calc exposing (calc)
 import Combine exposing (..)
 import Combine.Char exposing (..)
 import Combine.Infix exposing (..)
-import String
 
 
 calcSuite : Test
@@ -91,6 +90,29 @@ sepEndBy1Suite =
         <| assertEqual
              (parse (sepEndBy1 (string ",") (string "a")) "a,a,b")
              (Ok ["a", "a"], { input = "b", position = 4 })
+    ]
+
+
+sequenceSuite : Test
+sequenceSuite =
+  suite
+    "sequence tests"
+    [ test "empty sequence"
+        <| assertEqual
+             (parse (sequence []) "a")
+             (Ok [], { input = "a", position = 0 })
+    , test "one parser"
+        <| assertEqual
+             (parse (sequence [many <| string "a"]) "aaaab")
+             (Ok [["a", "a", "a", "a"]], { input = "b", position = 5 })
+    , test "many parsers"
+        <| assertEqual
+             (parse (sequence [string "a", string "b", string "c"]) "abc")
+             (Ok ["a", "b", "c"], { input = "", position = 3 })
+    , test "many parsers failure"
+        <| assertEqual
+             (parse (sequence [string "a", string "b", string "c"]) "abd")
+             (Err ["expected \"c\""], { input = "d", position = 2 })
     ]
 
 

@@ -1,7 +1,7 @@
 module Combine ( Parser, Context, primitive
                , parse, app, rec
                , bimap, map, mapError
-               , andThen, andMap
+               , andThen, andMap, sequence
                , fail, succeed, string, regex, while, end
                , or, choice, optional, maybe, many, many1, manyTill
                , sepBy, sepBy1, sepEndBy, sepEndBy1, skip, skipMany, skipMany1
@@ -23,7 +23,7 @@ module Combine ( Parser, Context, primitive
 @docs bimap, map, mapError
 
 # Chaining Parsers
-@docs andThen, andMap
+@docs andThen, andMap, sequence
 
 # Parsers
 @docs fail, succeed, string, regex, while, end, or, choice, optional, maybe, many, many1, manyTill, sepBy, sepBy1, sepEndBy, sepEndBy1, skip, skipMany, skipMany1, chainl, chainr, count, between, parens, braces, brackets
@@ -188,6 +188,7 @@ andThen p f =
       (Err m, cx') ->
         (Err m, cx')
 
+
 {-| Sequence two parsers.
 
     import Maybe
@@ -203,11 +204,40 @@ andThen p f =
     parse sum "1+2" ==
       (Ok 3, { input = "", position = 3 })
 -}
-andMap : Parser (res -> res') -> Parser res -> Parser res'
+andMap : Parser (a -> res) -> Parser a -> Parser res
 andMap lp rp =
   lp
     `andThen` \f -> rp
     `andThen` \x -> succeed (f x)
+
+
+{-| Run a list of parsers in sequence, accumulating the results.
+
+    parse (sequence [string "a", string "b"]) "ab" ==
+      (Ok ["a", "b"], { input = "", position = 2 })
+
+    parse (sequence [string "a", string "b"]) "ac" ==
+      (Err ["expected \"b\"", { input = "c", position = 1 })
+
+ -}
+sequence : List (Parser res) -> Parser (List res)
+sequence ps =
+  let
+    accumulate acc ps cx =
+      case ps of
+        [] ->
+          (Ok (List.reverse acc), cx)
+
+        p::ps ->
+          case app p cx of
+            (Ok res, rcx) ->
+              accumulate (res :: acc) ps rcx
+
+            (Err ms, ecx) ->
+              (Err ms, ecx)
+  in
+    Parser <| \cx ->
+      accumulate [] ps cx
 
 
 {-| Fail without consuming any input. -}
