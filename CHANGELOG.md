@@ -1,5 +1,11 @@
 # elm-combine changelog
 
+## elm-combine 2.2.0 (2016-03-06)
+
+### Additions
+
+* Added `sequence`
+
 ## elm-combine 2.1.0 (2016-02-28)
 
 ### Additions
