@@ -1,5 +1,11 @@
 # elm-combine changelog
 
+## elm-combine 2.2.1 (2016-05-11)
+
+### Additions
+
+* Added support for Elm 0.17
+
 ## elm-combine 2.2.0 (2016-03-06)
 
 ### Additions
