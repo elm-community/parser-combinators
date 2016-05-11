@@ -1,8 +1,0 @@
-language: node_js
-node_js:
-  - "0.12"
-before_script:
-  - cd tests
-  - npm install -g elm elm-test
-  - elm-package install -y
-script: elm-test TestRunner.elm
