@@ -1,4 +1,4 @@
-module Scheme where
+module Scheme exposing ( .. )
 
 import Combine exposing (..)
 import Combine.Char exposing (..)

@@ -1,4 +1,4 @@
-module Combine.Infix where
+module Combine.Infix exposing ( .. )
 
 {-| This module provides infix versions of various functions from the
 `Combine` module.

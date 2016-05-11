@@ -1,4 +1,4 @@
-module Combine.Num ( sign, digit, int, float ) where
+module Combine.Num exposing ( sign, digit, int, float )
 
 {-| This module contains Parsers specific to parsing numbers.
 

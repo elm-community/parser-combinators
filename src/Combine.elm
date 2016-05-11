@@ -1,13 +1,13 @@
-module Combine ( Parser, Context, primitive
-               , parse, app, rec
-               , bimap, map, mapError
-               , andThen, andMap, sequence
-               , fail, succeed, string, regex, while, end
-               , or, choice, optional, maybe, many, many1, manyTill
-               , sepBy, sepBy1, sepEndBy, sepEndBy1, skip, skipMany, skipMany1
-               , chainl, chainr, count, between, parens
-               , braces, brackets
-               ) where
+module Combine exposing ( Parser, Context, primitive
+                        , parse, app, rec
+                        , bimap, map, mapError
+                        , andThen, andMap, sequence
+                        , fail, succeed, string, regex, while, end
+                        , or, choice, optional, maybe, many, many1, manyTill
+                        , sepBy, sepBy1, sepEndBy, sepEndBy1, skip, skipMany, skipMany1
+                        , chainl, chainr, count, between, parens
+                        , braces, brackets
+                        )
 
 {-| This library provides reasonably fast parser combinators.
 

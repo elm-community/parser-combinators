@@ -1,4 +1,4 @@
-module Calc (calc) where
+module Calc exposing ( calc )
 
 {-| An example parser that computes arithmetic expressions.
 

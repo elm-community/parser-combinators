@@ -1,4 +1,4 @@
-module Combine.Char where
+module Combine.Char exposing ( .. )
 
 {-| This module contains `Char`-specific Parsers.
 

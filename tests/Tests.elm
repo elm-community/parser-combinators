@@ -1,4 +1,4 @@
-module Tests where
+module Tests exposing ( all )
 
 import ElmTest exposing (..)
 
@@ -125,3 +125,6 @@ all =
     , sepEndBySuite
     , sepEndBy1Suite
     ]
+
+main =
+  runSuite all
