@@ -66,12 +66,12 @@ initStream s = InputStream s s 0
 
 {-| A record representing the current parse location in an InputStream.
 
-* `sourceLine` the current line of source code
+* `source` the current line of source code
 * `line` the current line number (starting at 1)
-* `column` the current column (starting at 1, the initial line feed being column 0)
+* `column` the current column (starting at 1)
 -}
 type alias ParseLocation =
-  { sourceLine : String
+  { source : String
   , line : Int
   , column : Int
   }
@@ -85,13 +85,11 @@ type alias ParseContext state res =
 
 {-| Running a `Parser` results in one of two states:
 
-* `Ok` when the parser has successfully parsed the input (or part of
-it) to a result, or
-* `Err` when the parser has failed with a list of error messages.
+* `Ok res` when the parser has successfully parsed the input
+* `Err messages` when the parser has failed with a list of error messages.
 -}
 type alias ParseResult res =
   Result (List String) res
-
 
 
 type alias ParseFn state res =
@@ -100,8 +98,10 @@ type alias ParseFn state res =
 
 {-| The Parser type.
 
-At their core, `Parser`s simply wrap functions from a `InputStream` to a
-tuple of a `ParseResult res` and a new `InputStream`. -}
+At their core, `Parser`s wrap functions from some `state` and an
+`InputStream` to a tuple representing the some new `state`, the
+remaining `InputStream` and a `ParseResult res`.
+-}
 type Parser state res
   = Parser (ParseFn state res)
   | RecursiveParser (L.Lazy (ParseFn state res))
@@ -130,7 +130,8 @@ app p =
       L.force t
 
 
-{-| Parse a string.
+{-| Parse a string.  See `runParser` if your parser needs to manage
+some internal state.
 
     import Combine.Num exposing (int)
 
@@ -142,12 +143,68 @@ app p =
 
  -}
 parse : Parser () res -> String -> ParseContext () res
-parse p s = app p () (initStream s)
+parse p = runParser p ()
 
 
 {-| Parse a string while maintaining some internal state. -}
 runParser : Parser state res -> state -> String -> ParseContext state res
 runParser p st s = app p st (initStream s)
+
+
+{-| Defer running a parser until it's actually required.  Use this
+function to avoid "bad-recursion" errors.
+
+    type Expression
+      = ETerm String
+      | EList (List E)
+
+    whitespace : Parser s String
+    whitespace = regex "[ \t\r\n]*"
+
+    name : Parser s String
+    name = whitespace *> regex "[a-zA-Z]+" <* whitespace
+
+    term : Parser s Expression
+    term = ETerm <$> name
+
+    list : Parser s Expression
+    list =
+      let
+        -- helper is itself a function so we avoid the case where the
+        -- value `list` calls itself prematurely.
+        helper () =
+          EList <$> between (string "(") (string ")") (many (term <|> list))
+      in
+        -- rec defers calling helper until it's actually needed.
+        rec helper
+
+    parse list "" ==
+      (Err ["expected \"(\""], { input = "", position = 0 })
+
+    parse list "()" ==
+      (Ok (EList []), { input = "", position = 2 })
+
+    parse list "(a (b c))" ==
+      (Ok (EList [ETerm "a", EList [ETerm "b", ETerm "c"]]), { input = "", position = 9 })
+
+-}
+rec : (() -> Parser s a) -> Parser s a
+rec t = RecursiveParser (L.lazy (\() -> app (t ())))
+
+
+{-| Transform both the result and error message of a parser. -}
+bimap : (a -> b)
+      -> (List String -> List String)
+      -> Parser s a
+      -> Parser s b
+bimap fok ferr p =
+  Parser <| \state stream ->
+    case app p state stream of
+      (rstate, rstream, Ok res) ->
+        (rstate, rstream, Ok (fok res))
+
+      (estate, estream, Err ms) ->
+        (estate, estream, Err (ferr ms))
 
 
 -- State management
@@ -222,7 +279,7 @@ currentLocation stream =
 
 {-| Get the current source line in the input stream. -}
 currentSourceLine : InputStream -> String
-currentSourceLine = currentLocation >> .sourceLine
+currentSourceLine = currentLocation >> .source
 
 
 {-| Get the current line in the input stream. -}
@@ -235,62 +292,8 @@ currentColumn : InputStream -> Int
 currentColumn = currentLocation >> .column
 
 
-{-| Avoid running a parser until it's actually required.  Use this
-function to avoid "bad-recursion" errors.
-
-    type Expression
-      = ETerm String
-      | EList (List E)
-
-    whitespace : Parser String
-    whitespace = regex "[ \t\r\n]*"
-
-    name : Parser String
-    name = whitespace *> regex "[a-zA-Z]+" <* whitespace
-
-    term : Parser Expression
-    term = ETerm <$> name
-
-    list : Parser Expression
-    list =
-      let
-        -- helper is itself a function so we avoid the case where the
-        -- value `list` calls itself prematurely.
-        helper () =
-          EList <$> between (string "(") (string ")") (many (term <|> list))
-      in
-        -- rec defers calling helper until it's actually needed.
-        rec helper
-
-    parse list "" ==
-      (Err ["expected \"(\""], { input = "", position = 0 })
-
-    parse list "()" ==
-      (Ok (EList []), { input = "", position = 2 })
-
-    parse list "(a (b c))" ==
-      (Ok (EList [ETerm "a", EList [ETerm "b", ETerm "c"]]), { input = "", position = 9 })
-
--}
-rec : (() -> Parser s a) -> Parser s a
-rec t = RecursiveParser (L.lazy (\() -> app (t ())))
-
-
-{-| Transform both the result and error message of a parser. -}
-bimap : (a -> b)
-      -> (List String -> List String)
-      -> Parser s a
-      -> Parser s b
-bimap fok ferr p =
-  Parser <| \state stream ->
-    case app p state stream of
-      (rstate, rstream, Ok res) ->
-        (rstate, rstream, Ok (fok res))
-
-      (estate, estream, Err ms) ->
-        (estate, estream, Err (ferr ms))
-
-
+-- Transformers
+-- ------------
 {-| Transform the result of a parser.
 
     let
@@ -327,7 +330,7 @@ parser is returned on success.
 
     import Combine.Num exposing (int)
 
-    choosy : Parser String
+    choosy : Parser s String
     choosy =
       let
         createParser n =
@@ -366,10 +369,10 @@ andThen f p =
     import Result
     import String
 
-    num : Parser Int
+    num : Parser s Int
     num = (Maybe.withDefault 0 << Result.toMaybe << String.toInt) `map` regex "[0-9]+"
 
-    sum : Parser Int
+    sum : Parser s Int
     sum = (+) `map` (num <* string "+") `andMap` num
 
     parse sum "1+2" ==
@@ -412,6 +415,8 @@ sequence ps =
       accumulate [] ps state stream
 
 
+-- Combinators
+-- -----------
 {-| Fail without consuming any input.
 
     parse (fail "some error") "hello" ==
@@ -584,7 +589,7 @@ choice xs =
 
 {-| Return a default value when the given parser fails.
 
-    letterA : Parser String
+    letterA : Parser s String
     letterA = optional "a" (string "a")
 
     parse letterA "a" == (Ok "a", { input = "", position = 1 })
@@ -868,7 +873,7 @@ with a List of a single string.
 
 {-| Join two parsers, ignoring the result of the one on the right.
 
-    unsuffix : Parser String
+    unsuffix : Parser s String
     unsuffix =
       regex "[a-z]"
         <* regex "[!?]"
@@ -886,7 +891,7 @@ with a List of a single string.
 
 {-| Join two parsers, ignoring the result of the one on the left.
 
-    unprefix : Parser String
+    unprefix : Parser s String
     unprefix =
       string ">"
         *> while ((==) ' ')

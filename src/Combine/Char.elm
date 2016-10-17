@@ -1,9 +1,11 @@
 module Combine.Char exposing ( .. )
 
 {-| This module contains `Char`-specific Parsers.  Avoid using this
-module if performance is a concern, you can achieve everything that
-you can with this module by using `Combine.regex`, `Combine.string` or
-`Combine.primitive` and, in general, those will be much faster.
+module if performance is a concern.
+
+You can achieve everything that you can with this module by using
+`Combine.regex`, `Combine.string` or `Combine.primitive` and, in
+general, those will be much faster.
 
 # Parsers
 @docs satisfy, char, anyChar, oneOf, noneOf, space, tab, newline, crlf, eol, lower, upper, digit, octDigit, hexDigit

@@ -60,41 +60,41 @@ dropWhile p xs =
      then dropWhile p ys
      else xs
 
-comment : Parser String
+comment : Parser s String
 comment = regex "#[^\n]*"
 
-spaces : Parser String
+spaces : Parser s String
 spaces = regex " *"
 
-whitespace : Parser String
+whitespace : Parser s String
 whitespace = comment <|> spaces <?> "whitespace"
 
-ws : Parser res -> Parser res
+ws : Parser s res -> Parser s res
 ws = between whitespace whitespace
 
-keyword : String -> Parser String
+keyword : String -> Parser s String
 keyword s = string s <* spaces
 
-bool : Parser E
+bool : Parser s E
 bool = EBool <$> choice [ False <$ string "False"
                         , True  <$ string "True"
                         ] <?> "boolean"
 
-int : Parser E
+int : Parser s E
 int = EInt <$> Combine.Num.int <?> "integer"
 
-float : Parser E
+float : Parser s E
 float = EFloat <$> Combine.Num.float <?> "float"
 
-str : Parser E
+str : Parser s E
 str = EString <$> choice [ string "'" *> regex "(\\\\'|[^'\n])*" <* string "'"
                          , string "\"" *> regex "(\\\\\"|[^\"\n])*" <* string "\""
                          ] <?> "string"
 
-identifier : Parser E
+identifier : Parser s E
 identifier = EIdentifier <$> regex "[_a-zA-Z][_a-zA-Z0-9]*" <?> "identifier"
 
-attribute : Parser E
+attribute : Parser s E
 attribute =
   rec <| \() ->
     EAttribute
@@ -102,81 +102,81 @@ attribute =
       <*> choice [ attribute, identifier ]
       <?> "attribute"
 
-app : Parser E
+app : Parser s E
 app =
   rec <| \() -> EApp <$> choice [ attribute, identifier ] <*> parens exprList
 
-commaSep : Parser String
+commaSep : Parser s String
 commaSep = regex ", *"
 
-dictSep : Parser String
+dictSep : Parser s String
 dictSep = regex ":[ \t\r\n]*"
 
-listSep : Parser String
+listSep : Parser s String
 listSep = regex ",[ \t\r\n]*"
 
-list : Parser E
+list : Parser s E
 list =
   rec <| \() ->
       EList <$> brackets (sepBy listSep expr) <?> "list"
 
-tuple : Parser E
+tuple : Parser s E
 tuple =
   rec <| \() ->
       ETuple <$> parens (sepBy listSep expr) <?> "tuple"
 
-dict : Parser E
+dict : Parser s E
 dict =
   rec <| \() ->
       EDict <$> brackets (sepBy listSep ((,) <$> expr <* dictSep <*> expr))
             <?> "dictionary"
 
-set : Parser E
+set : Parser s E
 set =
   rec <| \() ->
       ESet <$> brackets (sepBy listSep expr) <?> "set"
 
-atom : Parser E
+atom : Parser s E
 atom =
   rec <| \() ->
       choice [ bool, float, int, str, attribute, identifier, list, tuple, dict, set ]
 
-expr : Parser E
+expr : Parser s E
 expr =
   rec (\() -> chainl orop andExpr)
 
-andExpr : Parser E
+andExpr : Parser s E
 andExpr =
   rec (\() -> chainl andop notExpr)
 
-notExpr : Parser E
+notExpr : Parser s E
 notExpr =
   rec <| \() ->
         (ws <| ENot <$> (string "not" *> notExpr)) <|> cmpExpr
 
-cmpExpr : Parser E
+cmpExpr : Parser s E
 cmpExpr =
   rec (\() -> chainl cmpop arithExpr)
 
-arithExpr : Parser E
+arithExpr : Parser s E
 arithExpr =
   rec (\() -> chainl addop term)
 
-term : Parser E
+term : Parser s E
 term =
   rec (\() -> chainl mulop factor)
 
-factor : Parser E
+factor : Parser s E
 factor =
   rec (\() -> ws (parens expr <|> app <|> atom))
 
-orop : Parser (E -> E -> E)
+orop : Parser s (E -> E -> E)
 orop = EOr <$ string "or"
 
-andop : Parser (E -> E -> E)
+andop : Parser s (E -> E -> E)
 andop = EAnd <$ string "and"
 
-cmpop : Parser (E -> E -> E)
+cmpop : Parser s (E -> E -> E)
 cmpop = ECmp <$> choice [ string "<",  string ">"
                         , string "==", string "!="
                         , string ">=", string "<="
@@ -184,75 +184,75 @@ cmpop = ECmp <$> choice [ string "<",  string ">"
                         , string "is", (++) <$> keyword "is" <*> string "not"
                         ]
 
-addop : Parser (E -> E -> E)
+addop : Parser s (E -> E -> E)
 addop = choice [ EAdd <$ string "+"
                , ESub <$ string "-"
                ]
 
-mulop : Parser (E -> E -> E)
+mulop : Parser s (E -> E -> E)
 mulop = choice [ EMul <$ string "*"
                , EDiv <$ string "/"
                ]
 
-exprList : Parser (List E)
+exprList : Parser s (List E)
 exprList = sepBy commaSep expr
 
-exprStmt : Parser S
+exprStmt : Parser s S
 exprStmt = SExpr <$> expr <?> "expression"
 
-printStmt : Parser S
+printStmt : Parser s S
 printStmt = SPrint <$> (keyword "print" *> exprList) <?> "print statement"
 
-delStmt : Parser S
+delStmt : Parser s S
 delStmt = SDel <$> (keyword "del" *> exprList) <?> "del statement"
 
-passStmt : Parser S
+passStmt : Parser s S
 passStmt = SPass <$ keyword "pass" <?> "pass statement"
 
-breakStmt : Parser S
+breakStmt : Parser s S
 breakStmt = SBreak <$ keyword "break" <?> "break statement"
 
-continueStmt : Parser S
+continueStmt : Parser s S
 continueStmt = SContinue <$ keyword "continue" <?> "continue statement"
 
-returnStmt : Parser S
+returnStmt : Parser s S
 returnStmt = SReturn <$> (keyword "return" *> maybe expr) <?> "return statement"
 
-raiseStmt : Parser S
+raiseStmt : Parser s S
 raiseStmt = SRaise <$> (keyword "raise" *> maybe exprList) <?> "raise statement"
 
-importAs : Parser (List (E, Maybe E))
+importAs : Parser s (List (E, Maybe E))
 importAs =
   sepBy commaSep <| (,)
     <$> choice [ attribute, identifier ]
     <*> maybe (whitespace *> keyword "as" *> identifier)
 
-importStmt : Parser S
+importStmt : Parser s S
 importStmt =
   SImport <$> (keyword "import" *> importAs)
           <?> "import statement"
 
-importFromStmt : Parser S
+importFromStmt : Parser s S
 importFromStmt =
   SImportFrom <$> (keyword "from" *> choice [ attribute, identifier ] <* spaces)
               <*> (keyword "import" *> importAs)
               <?> "from statement"
 
-globalStmt : Parser S
+globalStmt : Parser s S
 globalStmt = SGlobal <$> (keyword "global" *> sepBy commaSep identifier)
 
-assertStmt : Parser S
+assertStmt : Parser s S
 assertStmt =
   SAssert <$> (keyword "assert" *> expr)
           <*> maybe (commaSep *> expr)
 
-assignop : Parser (E -> E -> E)
+assignop : Parser s (E -> E -> E)
 assignop = EAssign <$ ws (string "=")
 
-assignStmt : Parser S
+assignStmt : Parser s S
 assignStmt = SAssign <$> (chainr assignop expr)
 
-indentation : Ctx -> Parser res -> Parser (Ctx, res)
+indentation : Ctx -> Parser s res -> Parser s (Ctx, res)
 indentation cx p =
   let
     level = Maybe.withDefault 0 (List.head cx)
@@ -261,54 +261,54 @@ indentation cx p =
   in
     indentationp *> map ((,) cx) p
 
-indent : Ctx -> Parser (Ctx, ())
+indent : Ctx -> Parser s (Ctx, ())
 indent cx =
-  primitive <| \pcx ->
-    case Combine.app spaces pcx of
-      (Ok s, _) ->
+  primitive <| \state stream ->
+    case Combine.app spaces state stream of
+      (_, _, Ok s) ->
         let level = String.length s in
         case cx of
           [] ->
-            (Err ["negative indentation"], pcx)
+            (state, stream, Err ["negative indentation"])
 
           x::_ ->
             if level > x
-            then (Ok (level::cx, ()), pcx)
-            else (Err ["expected indentation"], pcx)
+            then (state, stream, Ok (level::cx, ()))
+            else (state, stream, Err ["expected indentation"])
 
-      (Err ms, pcx) ->
-        (Err ms, pcx)
+      (estate, estream, Err ms) ->
+        (estate, estream, Err ms)
 
-dedent : Ctx -> Parser (Ctx, ())
+dedent : Ctx -> Parser s (Ctx, ())
 dedent cx =
-  primitive <| \pcx ->
-    case Combine.app spaces pcx of
-      (Ok s, _) ->
+  primitive <| \state stream ->
+    case Combine.app spaces state stream of
+      (_, _, Ok s) ->
         let rcx = dropWhile ((/=) (String.length s)) cx in
         case rcx of
           _::_ ->
-            (Ok (rcx, ()), pcx)
+            (state, stream, Ok (rcx, ()))
 
           _ ->
-            (Err ["unindent does not match any outer indentation level"], pcx)
+            (state, stream, Err ["unindent does not match any outer indentation level"])
 
-      (Err ms, pcx) ->
-        (Err ms, pcx)
+      (estate, estream, Err ms) ->
+        (estate, estream, Err ms)
 
-block : Ctx -> Parser (Ctx, List C)
+block : Ctx -> Parser s (Ctx, List C)
 block cx =
   string ":" *> whitespace *> eol *> indent cx
     |> andThen (\(scx, _) -> many1 (stmt scx)
     |> andThen (\ss -> dedent scx
     |> andThen (\(rcx, _) -> succeed (rcx, List.map snd ss))))
 
-blockStmt : Ctx -> Parser (List C -> C) -> Parser (Ctx, C)
+blockStmt : Ctx -> Parser s (List C -> C) -> Parser s (Ctx, C)
 blockStmt cx p =
   indentation cx p
     |> andThen (\(_, f) -> block cx
     |> andThen (\(rcx, ss) -> succeed (rcx, f ss)))
 
-simpleStmt : Ctx -> Parser (Ctx, C)
+simpleStmt : Ctx -> Parser s (Ctx, C)
 simpleStmt cx =
   let
     stmt = choice [ assertStmt, globalStmt, importFromStmt, importStmt
@@ -318,87 +318,79 @@ simpleStmt cx =
   in
     indentation cx (CSimple <$> sepBy (string ";" <* whitespace) stmt <* eol)
 
-whileStmt : Parser (List C -> C)
+whileStmt : Parser s (List C -> C)
 whileStmt =
   CWhile <$> (keyword "while" *> expr)
 
-forStmt : Parser (List C -> C)
+forStmt : Parser s (List C -> C)
 forStmt =
   CFor <$> (keyword "for" *> identifier)
        <*> (spaces *> keyword "in" *> expr)
 
-withStmt : Parser (List C -> C)
+withStmt : Parser s (List C -> C)
 withStmt =
   CWith
     <$> (keyword "with" *> expr)
     <*> maybe (keyword "as" *> identifier)
 
-funcStmt : Parser (List C -> C)
+funcStmt : Parser s (List C -> C)
 funcStmt =
   CFunc
     <$> (keyword "def" *> identifier)
     <*> parens (sepBy commaSep identifier)
 
-compoundStmt : Ctx -> Parser (Ctx, C)
+compoundStmt : Ctx -> Parser s (Ctx, C)
 compoundStmt cx =
   let
     parsers = [ whileStmt, forStmt, withStmt, funcStmt ]
   in choice <| List.map (\p -> blockStmt cx p) parsers
 
-stmt : Ctx -> Parser (Ctx, C)
+stmt : Ctx -> Parser s (Ctx, C)
 stmt cx = compoundStmt cx <|> simpleStmt cx
 
-program : Parser (List C)
+program : Parser s (List C)
 program =
   let
-    all acc cx pcx =
-      if pcx.input == ""
-      then (Ok (List.reverse acc), pcx)
+    all acc cx state stream =
+      if stream.input == ""
+      then (state, stream, Ok (List.reverse acc))
       else
-        case Combine.app (stmt cx) pcx of
-          (Ok (rcx, res), pcx) ->
-            all (res :: acc) rcx pcx
+        case Combine.app (stmt cx) state stream of
+          (rstate, rstream, Ok (rcx, res)) ->
+            all (res :: acc) rcx state stream
 
-          (Err ms, ecx) ->
-            (Err ms, ecx)
+          (estate, estream, Err ms) ->
+            (estate, estream, Err ms)
   in
     primitive <| all [] [0]
 
 
-formatError : String -> List String -> Context -> String
-formatError input ms cx =
+formatError : List String -> InputStream -> String
+formatError ms stream =
   let
-    lines = String.lines input
-    lineCount = List.length lines
-    (line, lineNumber, lineOffset, _) =
-      List.foldl
-            (\line (line_, n, o, pos) ->
-               if pos < 0
-               then (line_, n, o, pos)
-               else (line, n + 1, pos, pos - 1 - String.length line_))
-            ("", 0, 0, cx.position) lines
-
+    location = currentLocation stream
     separator = "|> "
     expectationSeparator = "\n  * "
-    lineNumberOffset = floor (logBase 10 lineNumber) + 1
+    lineNumberOffset = floor (logBase 10 (toFloat location.line)) + 1
     separatorOffset = String.length separator
-    padding = lineNumberOffset + separatorOffset + lineOffset + 1
+    padding = location.column + separatorOffset + 2
   in
   "Parse error around line:\n\n"
-    ++ (toString lineNumber) ++ separator ++ line ++ "\n"
+    ++ toString location.line ++ separator ++ location.sourceLine ++ "\n"
     ++ String.padLeft padding ' ' "^"
     ++ "\nI expected one of the following:\n"
     ++ expectationSeparator
     ++ String.join expectationSeparator ms
 
+
 parse : String -> Result String (List C)
 parse s =
   case Combine.parse program (s ++ "\n") of
-    (Ok es, _) ->
+    (_, _, Ok es) ->
       Ok es
 
-    (Err ms, cx) ->
-      Err <| formatError s ms cx
+    (_, stream, Err ms) ->
+      Err <| formatError ms stream
 
 test : Result String (List C)
 test =
