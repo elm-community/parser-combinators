@@ -38,13 +38,13 @@ toFloat = unwrap String.toFloat
 
 {-| Parse a numeric sign, returning `1` for positive numbers and `-1`
 for negative numbers. -}
-sign : Parser Int
+sign : Parser s Int
 sign = optional 1 (choice [  1 <$ string "+"
                           , -1 <$ string "-" ])
 
 
 {-| Parse a digit. -}
-digit : Parser Int
+digit : Parser s Int
 digit =
   let
     toDigit c = Char.toCode c - Char.toCode '0'
@@ -53,7 +53,7 @@ digit =
 
 
 {-| Parse an integer. -}
-int : Parser Int
+int : Parser s Int
 int =
   (*)
     <$> sign
@@ -62,7 +62,7 @@ int =
 
 
 {-| Parse a float. -}
-float : Parser Float
+float : Parser s Float
 float =
   ((*) << Basics.toFloat)
     <$> sign

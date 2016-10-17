@@ -8,33 +8,33 @@ module Calc exposing ( calc )
 import Combine exposing (..)
 import Combine.Num exposing (int)
 
-addop : Parser (Int -> Int -> Int)
+addop : Parser s (Int -> Int -> Int)
 addop = choice [ (+) <$ string "+"
                , (-) <$ string "-"
                ]
 
-mulop : Parser (Int -> Int -> Int)
+mulop : Parser s (Int -> Int -> Int)
 mulop = choice [ (*)  <$ string "*"
                , (//) <$ string "/"
                ]
 
-expr : Parser Int
+expr : Parser s Int
 expr =
   let
     go () =
-      term |> chainl addop
+      chainl addop term
   in
     rec go
 
-term : Parser Int
+term : Parser s Int
 term =
   let
     go () =
-      factor |> chainl mulop
+      chainl mulop factor
   in
     rec go
 
-factor : Parser Int
+factor : Parser s Int
 factor =
   whitespace *> (parens expr <|> int) <* whitespace
 
@@ -42,8 +42,8 @@ factor =
 calc : String -> Result String Int
 calc s =
   case parse (expr <* end) s of
-    (Ok n, _) ->
+    (_, _, Ok n) ->
       Ok n
 
-    (Err ms, cx) ->
-      Err ("parse error: " ++ (toString ms) ++ ", " ++ (toString cx))
+    (_, stream, Err ms) ->
+      Err ("parse error: " ++ (toString ms) ++ ", " ++ (toString stream))

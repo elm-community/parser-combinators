@@ -20,13 +20,13 @@ type E
   | EUnquoteSplice E
   | EComment String
 
-comment : Parser E
+comment : Parser s E
 comment =
   EComment
     <$> regex ";[^\n]+"
     <?> "comment"
 
-bool : Parser E
+bool : Parser s E
 bool =
   let
     boolLiteral = choice [ True  <$ string "#t"
@@ -37,19 +37,19 @@ bool =
     <$> boolLiteral
     <?> "boolean literal"
 
-int : Parser E
+int : Parser s E
 int =
   EInt
     <$> Combine.Num.int
     <?> "integer literal"
 
-float : Parser E
+float : Parser s E
 float =
   EFloat
     <$> Combine.Num.float
     <?> "float literal"
 
-char : Parser E
+char : Parser s E
 char =
   let
     charLiteral =
@@ -62,13 +62,13 @@ char =
     <$> charLiteral
     <?> "character literal"
 
-str : Parser E
+str : Parser s E
 str =
   EString
     <$> regex "\"(\\\"|[^\"])+\""
     <?> "string literal"
 
-identifier : Parser E
+identifier : Parser s E
 identifier =
   let
     letter = "a-zA-Z"
@@ -83,89 +83,80 @@ identifier =
 
     identifierRe = initialRe ++ subsequentRe
   in
-  EIdentifier <$> regex identifierRe <?> "identifier"
+    EIdentifier <$> regex identifierRe <?> "identifier"
 
-list : Parser E
+list : Parser s E
 list =
   EList
     <$> parens (many expr)
     <?> "list"
 
-vector : Parser E
+vector : Parser s E
 vector =
   EVector
     <$> (string "#(" *> many expr <* string ")")
     <?> "vector"
 
-quote : Parser E
+quote : Parser s E
 quote =
   EQuote
     <$> (string "'" *> expr)
     <?> "quoted expression"
 
-quasiquote : Parser E
+quasiquote : Parser s E
 quasiquote =
   EQuasiquote
     <$> (string "`" *> expr)
     <?> "quasiquoted expression"
 
-unquote : Parser E
+unquote : Parser s E
 unquote =
   EUnquote
     <$> (string "," *> expr)
     <?> "unquoted expression"
 
-unquoteSplice : Parser E
+unquoteSplice : Parser s E
 unquoteSplice =
   EUnquoteSplice
     <$> (string ",@" *> expr)
     <?> "spliced expression"
 
-expr : Parser E
+expr : Parser s E
 expr =
   rec <| \() ->
     let parsers = [ bool, float, int, char, str, identifier, list, vector
                   , quote, quasiquote, unquote, unquoteSplice, comment ]
     in whitespace *> choice parsers <* whitespace
 
-program : Parser (List E)
+program : Parser s (List E)
 program =
   let
-    all acc cx =
-      if cx.input == ""
+    all acc state stream =
+      if stream.input == ""
       then
-        (Ok (List.reverse acc), cx)
+        (state, stream, Ok (List.reverse acc))
       else
-        case app expr cx of
-          (Ok res, rcx) ->
-            all (res :: acc) rcx
+        case app expr state stream of
+          (rstate, rstream, Ok res) ->
+            all (res :: acc) rstate rstream
 
-          (Err ms, ecx) ->
-            (Err ms, ecx)
+          (estate, estream, Err ms) ->
+            (estate, estream, Err ms)
   in
     primitive <| all []
 
-formatError : String -> List String -> Context -> String
-formatError input ms cx =
+formatError : List String -> InputStream -> String
+formatError ms stream =
   let
-    lines = String.lines input
-    lineCount = List.length lines
-    (line, lineNumber, lineOffset, _) =
-      List.foldl
-            (\line (line_, n, o, pos) ->
-               if pos < 0
-               then (line_, n, o, pos)
-               else (line, n + 1, pos, pos - 1 - String.length line_))
-            ("", 0, 0, cx.position) lines
-
+    location = currentLocation stream
     separator = "|> "
     expectationSeparator = "\n  * "
-    lineNumberOffset = floor (logBase 10 lineNumber) + 1
+    lineNumberOffset = floor (logBase 10 (toFloat location.line)) + 1
     separatorOffset = String.length separator
-    padding = lineNumberOffset + separatorOffset + lineOffset + 1
+    padding = location.column + separatorOffset + 2
   in
   "Parse error around line:\n\n"
-    ++ (toString lineNumber) ++ separator ++ line ++ "\n"
+    ++ toString location.line ++ separator ++ location.sourceLine ++ "\n"
     ++ String.padLeft padding ' ' "^"
     ++ "\nI expected one of the following:\n"
     ++ expectationSeparator
@@ -174,8 +165,8 @@ formatError input ms cx =
 parse : String -> Result String (List E)
 parse s =
   case Combine.parse program s of
-    (Ok e, _) ->
+    (_, _, Ok e) ->
       Ok e
 
-    (Err ms, cx) ->
-      Err <| formatError s ms cx
+    (_, stream, Err ms) ->
+      Err <| formatError ms stream
