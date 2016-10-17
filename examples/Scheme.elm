@@ -2,7 +2,6 @@ module Scheme exposing ( .. )
 
 import Combine exposing (..)
 import Combine.Char exposing (..)
-import Combine.Infix exposing (..)
 import Combine.Num
 import String
 
@@ -20,9 +19,6 @@ type E
   | EUnquote E
   | EUnquoteSplice E
   | EComment String
-
-whitespace : Parser String
-whitespace = regex "[ \t\r\n]*" <?> "whitespace"
 
 comment : Parser E
 comment =
@@ -137,14 +133,15 @@ program =
   let
     all acc cx =
       if cx.input == ""
-      then (Ok (List.reverse acc), cx)
+      then
+        (Ok (List.reverse acc), cx)
       else
         case app expr cx of
-          (Ok res', cx') ->
-            all (res' :: acc) cx'
+          (Ok res, rcx) ->
+            all (res :: acc) rcx
 
-          (Err ms, cx') ->
-            (Err ms, cx')
+          (Err ms, ecx) ->
+            (Err ms, ecx)
   in
     primitive <| all []
 
@@ -155,10 +152,10 @@ formatError input ms cx =
     lineCount = List.length lines
     (line, lineNumber, lineOffset, _) =
       List.foldl
-            (\line (line', n, o, pos) ->
+            (\line (line_, n, o, pos) ->
                if pos < 0
-               then (line', n, o, pos)
-               else (line, n + 1, pos, pos - 1 - String.length line'))
+               then (line_, n, o, pos)
+               else (line, n + 1, pos, pos - 1 - String.length line_))
             ("", 0, 0, cx.position) lines
 
     separator = "|> "

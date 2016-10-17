@@ -2,7 +2,6 @@ module Python exposing ( .. )
 
 import Combine exposing (..)
 import Combine.Char exposing (..)
-import Combine.Infix exposing (..)
 import Combine.Num
 import String
 
@@ -55,10 +54,10 @@ type alias Ctx = List Int
 dropWhile : (a -> Bool) -> List a -> List a
 dropWhile p xs =
   case xs of
-    []     -> []
-    x::xs' ->
+    []    -> []
+    x::ys ->
      if p x
-     then dropWhile p xs'
+     then dropWhile p ys
      else xs
 
 comment : Parser String
@@ -144,38 +143,32 @@ atom =
 
 expr : Parser E
 expr =
-  rec <| \() ->
-      andExpr `chainl` orop
+  rec (\() -> chainl orop andExpr)
 
 andExpr : Parser E
 andExpr =
-  rec <| \() ->
-      notExpr `chainl` andop
+  rec (\() -> chainl andop notExpr)
 
 notExpr : Parser E
 notExpr =
   rec <| \() ->
-        (ws <| ENot <$> (string "not" *> notExpr)) `or` cmpExpr
+        (ws <| ENot <$> (string "not" *> notExpr)) <|> cmpExpr
 
 cmpExpr : Parser E
 cmpExpr =
-  rec <| \() ->
-      arithExpr `chainl` cmpop
+  rec (\() -> chainl cmpop arithExpr)
 
 arithExpr : Parser E
 arithExpr =
-  rec <| \() ->
-      term `chainl` addop
+  rec (\() -> chainl addop term)
 
 term : Parser E
 term =
-  rec <| \() ->
-      factor `chainl` mulop
+  rec (\() -> chainl mulop factor)
 
 factor : Parser E
 factor =
-  rec <| \() ->
-      ws (parens expr <|> app <|> atom)
+  rec (\() -> ws (parens expr <|> app <|> atom))
 
 orop : Parser (E -> E -> E)
 orop = EOr <$ string "or"
@@ -257,7 +250,7 @@ assignop : Parser (E -> E -> E)
 assignop = EAssign <$ ws (string "=")
 
 assignStmt : Parser S
-assignStmt = SAssign <$> (expr `chainr` assignop)
+assignStmt = SAssign <$> (chainr assignop expr)
 
 indentation : Ctx -> Parser res -> Parser (Ctx, res)
 indentation cx p =
@@ -291,10 +284,10 @@ dedent cx =
   primitive <| \pcx ->
     case Combine.app spaces pcx of
       (Ok s, _) ->
-        let cx' = dropWhile ((/=) (String.length s)) cx in
-        case cx' of
+        let rcx = dropWhile ((/=) (String.length s)) cx in
+        case rcx of
           _::_ ->
-            (Ok (cx', ()), pcx)
+            (Ok (rcx, ()), pcx)
 
           _ ->
             (Err ["unindent does not match any outer indentation level"], pcx)
@@ -305,15 +298,15 @@ dedent cx =
 block : Ctx -> Parser (Ctx, List C)
 block cx =
   string ":" *> whitespace *> eol *> indent cx
-    `andThen` \(cx', _) -> many1 (stmt cx')
-    `andThen` \ss -> dedent cx'
-    `andThen` \(cx'', _) -> succeed (cx'', List.map snd ss)
+    |> andThen (\(scx, _) -> many1 (stmt scx)
+    |> andThen (\ss -> dedent scx
+    |> andThen (\(rcx, _) -> succeed (rcx, List.map snd ss))))
 
 blockStmt : Ctx -> Parser (List C -> C) -> Parser (Ctx, C)
 blockStmt cx p =
   indentation cx p
-    `andThen` \(_, f) -> block cx
-    `andThen` \(cx, ss) -> succeed (cx, f ss)
+    |> andThen (\(_, f) -> block cx
+    |> andThen (\(rcx, ss) -> succeed (rcx, f ss)))
 
 simpleStmt : Ctx -> Parser (Ctx, C)
 simpleStmt cx =
@@ -353,7 +346,7 @@ compoundStmt cx =
   in choice <| List.map (\p -> blockStmt cx p) parsers
 
 stmt : Ctx -> Parser (Ctx, C)
-stmt cx = compoundStmt cx `or` simpleStmt cx
+stmt cx = compoundStmt cx <|> simpleStmt cx
 
 program : Parser (List C)
 program =
@@ -363,11 +356,11 @@ program =
       then (Ok (List.reverse acc), pcx)
       else
         case Combine.app (stmt cx) pcx of
-          (Ok (cx', res'), pcx') ->
-            all (res' :: acc) cx' pcx'
+          (Ok (rcx, res), pcx) ->
+            all (res :: acc) rcx pcx
 
-          (Err ms, pcx') ->
-            (Err ms, pcx')
+          (Err ms, ecx) ->
+            (Err ms, ecx)
   in
     primitive <| all [] [0]
 
@@ -379,10 +372,10 @@ formatError input ms cx =
     lineCount = List.length lines
     (line, lineNumber, lineOffset, _) =
       List.foldl
-            (\line (line', n, o, pos) ->
+            (\line (line_, n, o, pos) ->
                if pos < 0
-               then (line', n, o, pos)
-               else (line, n + 1, pos, pos - 1 - String.length line'))
+               then (line_, n, o, pos)
+               else (line, n + 1, pos, pos - 1 - String.length line_))
             ("", 0, 0, cx.position) lines
 
     separator = "|> "

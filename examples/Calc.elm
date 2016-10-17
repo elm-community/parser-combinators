@@ -6,26 +6,37 @@ module Calc exposing ( calc )
 -}
 
 import Combine exposing (..)
-import Combine.Infix exposing (..)
 import Combine.Num exposing (int)
 
-ws : Parser String
-ws = regex "[ \t\r\n]*"
-
 addop : Parser (Int -> Int -> Int)
-addop = choice [ (+) <$ string "+", (-) <$ string "-" ]
+addop = choice [ (+) <$ string "+"
+               , (-) <$ string "-"
+               ]
 
 mulop : Parser (Int -> Int -> Int)
-mulop = choice [ (*) <$ string "*", (//) <$ string "/" ]
+mulop = choice [ (*)  <$ string "*"
+               , (//) <$ string "/"
+               ]
 
 expr : Parser Int
-expr = rec <| \() -> term `chainl` addop
+expr =
+  let
+    go () =
+      term |> chainl addop
+  in
+    rec go
 
 term : Parser Int
-term = rec <| \() -> factor `chainl` mulop
+term =
+  let
+    go () =
+      factor |> chainl mulop
+  in
+    rec go
 
 factor : Parser Int
-factor = rec <| \() -> between ws ws (parens expr <|> int)
+factor =
+  whitespace *> (parens expr <|> int) <* whitespace
 
 {-| Compute the result of an expression. -}
 calc : String -> Result String Int
