@@ -1,4 +1,10 @@
-module Combine.Num exposing ( sign, digit, int, float )
+module Combine.Num
+  exposing
+    ( sign
+    , digit
+    , int
+    , float
+    )
 
 {-| This module contains Parsers specific to parsing numbers.
 
@@ -9,8 +15,6 @@ module Combine.Num exposing ( sign, digit, int, float )
 import Char
 import Combine exposing (..)
 import Combine.Char
-import Combine.Infix exposing (..)
-import Debug exposing (crash)
 import String
 
 
@@ -21,7 +25,7 @@ unwrap f s =
       res
 
     Err m ->
-      crash ("impossible state in Combine.Num.unwrap: " ++ (toString m))
+      Debug.crash ("impossible state in Combine.Num.unwrap: " ++ (toString m))
 
 
 toInt : String -> Int
@@ -52,13 +56,15 @@ digit =
 int : Parser Int
 int =
   (*)
-    `map` sign
-    `andMap` (toInt <$> regex "(0|[1-9][0-9]*)") <?> "expected an integer"
+    <$> sign
+    <*> (toInt <$> regex "(0|[1-9][0-9]*)")
+    <?> "expected an integer"
 
 
 {-| Parse a float. -}
 float : Parser Float
 float =
   ((*) << Basics.toFloat)
-    `map` sign
-    `andMap` (toFloat <$> regex "(0|[1-9][0-9]*)(\\.[0-9]+)") <?> "expected a float"
+    <$> sign
+    <*> (toFloat <$> regex "(0|[1-9][0-9]*)(\\.[0-9]+)")
+    <?> "expected a float"

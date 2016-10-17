@@ -1,6 +1,9 @@
 module Combine.Char exposing ( .. )
 
-{-| This module contains `Char`-specific Parsers.
+{-| This module contains `Char`-specific Parsers.  Avoid using this
+module if performance is a concern, you can achieve everything that
+you can with this module by using `Combine.regex`, `Combine.string` or
+`Combine.primitive` and, in general, those will be much faster.
 
 # Parsers
 @docs satisfy, char, anyChar, oneOf, noneOf, space, tab, newline, crlf, eol, lower, upper, digit, octDigit, hexDigit
@@ -8,7 +11,6 @@ module Combine.Char exposing ( .. )
 
 import Char
 import Combine exposing (..)
-import Combine.Infix exposing (..)
 import String
 
 
@@ -19,6 +21,7 @@ import String
 
     parse (satisfy ((==) 'a')) "b" ==
       (Err ["could not satisfy predicate"], { input = "b", position = 0 })
+
 -}
 satisfy : (Char -> Bool) -> Parser Char
 satisfy pred =
@@ -41,6 +44,7 @@ satisfy pred =
 
     parse (char 'a') "b" ==
       (Err ["expected 'a'"], { input = "b", position = 0 })
+
 -}
 char : Char -> Parser Char
 char c = satisfy ((==) c) <?> ("expected " ++ (toString c))
@@ -53,6 +57,7 @@ char c = satisfy ((==) c) <?> ("expected " ++ (toString c))
 
     parse anyChar "" ==
       (Err ["expected any character"], { input = "", position = 0 })
+
 -}
 anyChar : Parser Char
 anyChar = satisfy (always True) <?> "expected any character"
@@ -65,6 +70,7 @@ anyChar = satisfy (always True) <?> "expected any character"
 
     parse (oneOf ['a', 'b']) "c" ==
       (Err ["expected one of ['a','b']"], { input = "c", position = 0 })
+
 -}
 oneOf : List Char -> Parser Char
 oneOf cs = satisfy (flip List.member cs) <?> ("expected one of " ++ (toString cs))
@@ -77,6 +83,7 @@ oneOf cs = satisfy (flip List.member cs) <?> ("expected one of " ++ (toString cs
 
     parse (noneOf ['a', 'b']) "a" ==
       (Err ["expected none of ['a','b']"], { input = "a", position = 0 })
+
 -}
 noneOf : List Char -> Parser Char
 noneOf cs =

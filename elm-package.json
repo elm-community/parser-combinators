@@ -10,7 +10,6 @@
     "exposed-modules": [
         "Combine",
         "Combine.Char",
-        "Combine.Infix",
         "Combine.Num"
     ],
     "dependencies": {
