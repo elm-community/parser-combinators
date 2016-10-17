@@ -8,7 +8,7 @@ module Combine
     , or, choice, optional, maybe, many, many1, manyTill
     , sepBy, sepBy1, sepEndBy, sepEndBy1, skip, skipMany, skipMany1
     , chainl, chainr, count, between, parens
-    , braces, brackets
+    , braces, brackets, whitespace
     , (<?>), (>>=), (<$>), (<$), ($>), (<*>), (<*), (*>), (<|>)
     )
 
@@ -30,7 +30,7 @@ module Combine
 @docs andThen, andMap, sequence
 
 ## Combinators
-@docs fail, succeed, string, regex, while, end, or, choice, optional, maybe, many, many1, manyTill, sepBy, sepBy1, sepEndBy, sepEndBy1, skip, skipMany, skipMany1, chainl, chainr, count, between, parens, braces, brackets
+@docs fail, succeed, string, regex, while, end, or, choice, optional, maybe, many, many1, manyTill, sepBy, sepBy1, sepEndBy, sepEndBy1, skip, skipMany, skipMany1, chainl, chainr, count, between, parens, braces, brackets, whitespace
 
 ## Infix combinators
 @docs (<?>), (>>=), (<$>), (<$), ($>), (<*>), (<*), (*>), (<|>)
@@ -694,6 +694,11 @@ braces = between (string "{") (string "}")
 {-| Parse something between square brackets `[]`. -}
 brackets : Parser a -> Parser a
 brackets = between (string "[") (string "]")
+
+
+{-| Parse zero or more whitespace characters. -}
+whitespace : Parser String
+whitespace = regex "[ \t\r\n]*" <?> "whitespace"
 
 
 -- Infix operators
