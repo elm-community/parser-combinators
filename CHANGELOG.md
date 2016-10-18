@@ -1,5 +1,29 @@
 # elm-combine changelog
 
+## elm-combine 3.0.0 (TBD)
+
+### Changes
+
+* The `Combine.Infix` module has been merged into `Combine` *BREAKING*
+* The `Parser` type has changed from `Parser res` to `Parser state res` *BREAKING*
+* The signature of `andThen` has changed from `Parser s a -> (a -> Parser s b) -> Parser s b)` to `(a -> Parser s b) -> Parser s a -> Parser s b` *BREAKING*
+
+### Additions
+
+* Added `InputStream`, `ParseLocation`, `ParseContext` and `ParseResult` types
+* Added `runParser`, `withState`, `getState`, `putState`, `modifyState`
+* Added `withLocation`, `withLine`, `withColumn`, `currentLocation`, `currentSourceLine`, `currentLine`, `currentColumn`
+* Added `lookAhead` and `whitespace` parsers
+
+### Removals
+
+* Removed `bimap`
+
+### Upgrading from 2.2.1
+
+* Replace all occurrences of `Parser *` with `Parser s *`
+* Replace all infix occurrences of andThen with `a |> andThen b`
+
 ## elm-combine 2.2.1 (2016-05-11)
 
 ### Additions
