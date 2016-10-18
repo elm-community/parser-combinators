@@ -23,6 +23,7 @@
 
 * Replace all occurrences of `Parser *` with `Parser s *`
 * Replace all infix occurrences of andThen with `a |> andThen b`
+* Replace all imports of `Combine.Infix` with `Combine`
 
 ## elm-combine 2.2.1 (2016-05-11)
 
