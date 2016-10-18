@@ -11,7 +11,7 @@
 ### Additions
 
 * Added `InputStream`, `ParseLocation`, `ParseContext` and `ParseResult` types
-* Added `runParser`, `withState`, `getState`, `putState`, `modifyState`
+* Added `runParser`, `withState`, `putState`, `modifyState`
 * Added `withLocation`, `withLine`, `withColumn`, `currentLocation`, `currentSourceLine`, `currentLine`, `currentColumn`
 * Added `lookAhead` and `whitespace` parsers
 
