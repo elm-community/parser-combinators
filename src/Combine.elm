@@ -8,7 +8,7 @@ module Combine
     , map, mapError
     , andThen, andMap, sequence
     , fail, succeed, string, regex, while, end
-    , or, choice, optional, maybe, many, many1, manyTill
+    , lookAhead, or, choice, optional, maybe, many, many1, manyTill
     , sepBy, sepBy1, sepEndBy, sepEndBy1, skip, skipMany, skipMany1
     , chainl, chainr, count, between, parens
     , braces, brackets, whitespace
@@ -36,7 +36,7 @@ module Combine
 @docs andThen, andMap, sequence
 
 ## Combinators
-@docs fail, succeed, string, regex, while, end, or, choice, optional, maybe, many, many1, manyTill, sepBy, sepBy1, sepEndBy, sepEndBy1, skip, skipMany, skipMany1, chainl, chainr, count, between, parens, braces, brackets, whitespace
+@docs fail, succeed, string, regex, while, end, lookAhead, or, choice, optional, maybe, many, many1, manyTill, sepBy, sepBy1, sepEndBy, sepEndBy1, skip, skipMany, skipMany1, chainl, chainr, count, between, parens, braces, brackets, whitespace
 
 ## Infix combinators
 @docs (<?>), (>>=), (<$>), (<$), ($>), (<*>), (<*), (*>), (<|>)
@@ -543,6 +543,18 @@ end =
     if stream.input == ""
     then (state, stream, Ok ())
     else (state, stream, Err ["expected end of input"])
+
+
+{-| Apply a parser without consuming any input on success. -}
+lookAhead : Parser s a -> Parser s a
+lookAhead p =
+  Parser <| \state stream ->
+    case app p state stream of
+      (rstate, _, Ok res) ->
+        (rstate, stream, Ok res)
+
+      err ->
+        err
 
 
 {-| Choose between two parsers.
