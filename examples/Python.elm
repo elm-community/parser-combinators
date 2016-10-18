@@ -1,55 +1,60 @@
-module Python exposing ( .. )
+module Python
+  exposing
+    (..)
 
 import Combine exposing (..)
 import Combine.Char exposing (..)
 import Combine.Num
 import String
 
-type E
+type Expression
   = EBool Bool
   | EInt Int
   | EFloat Float
   | EString String
-  | EOr E E
-  | EAnd E E
-  | ENot E
-  | ECmp String E E
-  | EAdd E E
-  | ESub E E
-  | EMul E E
-  | EDiv E E
-  | EList (List E)
-  | ETuple (List E)
-  | EDict (List (E, E))
-  | ESet (List E)
+  | EOr Expression Expression
+  | EAnd Expression Expression
+  | ENot Expression
+  | ECmp String Expression Expression
+  | EAdd Expression Expression
+  | ESub Expression Expression
+  | EMul Expression Expression
+  | EDiv Expression Expression
+  | EList (List Expression)
+  | ETuple (List Expression)
+  | EDict (List (Expression, Expression))
+  | ESet (List Expression)
   | EIdentifier String
-  | EAttribute E E
-  | EApp E (List E)
-  | EAssign E E
+  | EAttribute Expression Expression
+  | EApp Expression (List Expression)
+  | EAssign Expression Expression
 
-type S
-  = SExpr E
-  | SPrint (List E)
-  | SDel (List E)
+type Statement
+  = SExpr Expression
+  | SPrint (List Expression)
+  | SDel (List Expression)
   | SPass
   | SBreak
   | SContinue
-  | SReturn (Maybe E)
-  | SRaise (Maybe (List E))
-  | SImport (List (E, Maybe E))
-  | SImportFrom E (List (E, Maybe E))
-  | SGlobal (List E)
-  | SAssert E (Maybe E)
-  | SAssign E
+  | SReturn (Maybe Expression)
+  | SRaise (Maybe (List Expression))
+  | SImport (List (Expression, Maybe Expression))
+  | SImportFrom Expression (List (Expression, Maybe Expression))
+  | SGlobal (List Expression)
+  | SAssert Expression (Maybe Expression)
+  | SAssign Expression
 
-type C
-  = CSimple (List S)
-  | CWhile E (List C)
-  | CFor E E (List C)
-  | CWith E (Maybe E) (List C)
-  | CFunc E (List E) (List C)
+type CompoundStatement
+  = CSimple (List Statement)
+  | CWhile Expression (List CompoundStatement)
+  | CFor Expression Expression (List CompoundStatement)
+  | CWith Expression (Maybe Expression) (List CompoundStatement)
+  | CFunc Expression (List Expression) (List CompoundStatement)
 
-type alias Ctx = List Int
+type alias Indentation = List Int
+
+initIndentation : Indentation
+initIndentation = [0]
 
 dropWhile : (a -> Bool) -> List a -> List a
 dropWhile p xs =
@@ -69,32 +74,32 @@ spaces = regex " *"
 whitespace : Parser s String
 whitespace = comment <|> spaces <?> "whitespace"
 
-ws : Parser s res -> Parser s res
-ws = between whitespace whitespace
+token : Parser s res -> Parser s res
+token = between whitespace whitespace
 
 keyword : String -> Parser s String
 keyword s = string s <* spaces
 
-bool : Parser s E
+bool : Parser s Expression
 bool = EBool <$> choice [ False <$ string "False"
                         , True  <$ string "True"
                         ] <?> "boolean"
 
-int : Parser s E
+int : Parser s Expression
 int = EInt <$> Combine.Num.int <?> "integer"
 
-float : Parser s E
+float : Parser s Expression
 float = EFloat <$> Combine.Num.float <?> "float"
 
-str : Parser s E
-str = EString <$> choice [ string "'" *> regex "(\\\\'|[^'\n])*" <* string "'"
+str : Parser s Expression
+str = EString <$> choice [ string "'"  *> regex "(\\\\'|[^'\n])*"   <* string "'"
                          , string "\"" *> regex "(\\\\\"|[^\"\n])*" <* string "\""
                          ] <?> "string"
 
-identifier : Parser s E
+identifier : Parser s Expression
 identifier = EIdentifier <$> regex "[_a-zA-Z][_a-zA-Z0-9]*" <?> "identifier"
 
-attribute : Parser s E
+attribute : Parser s Expression
 attribute =
   rec <| \() ->
     EAttribute
@@ -102,9 +107,13 @@ attribute =
       <*> choice [ attribute, identifier ]
       <?> "attribute"
 
-app : Parser s E
+app : Parser s Expression
 app =
-  rec <| \() -> EApp <$> choice [ attribute, identifier ] <*> parens exprList
+  rec <| \() ->
+    EApp
+      <$> choice [ attribute, identifier ]
+      <*> parens exprList
+      <?> "function call"
 
 commaSep : Parser s String
 commaSep = regex ", *"
@@ -115,68 +124,75 @@ dictSep = regex ":[ \t\r\n]*"
 listSep : Parser s String
 listSep = regex ",[ \t\r\n]*"
 
-list : Parser s E
+list : Parser s Expression
 list =
   rec <| \() ->
-      EList <$> brackets (sepBy listSep expr) <?> "list"
+    EList
+      <$> brackets (sepBy listSep expr)
+      <?> "list"
 
-tuple : Parser s E
+tuple : Parser s Expression
 tuple =
   rec <| \() ->
-      ETuple <$> parens (sepBy listSep expr) <?> "tuple"
+    ETuple
+      <$> parens (sepBy listSep expr)
+      <?> "tuple"
 
-dict : Parser s E
+dict : Parser s Expression
 dict =
   rec <| \() ->
-      EDict <$> brackets (sepBy listSep ((,) <$> expr <* dictSep <*> expr))
-            <?> "dictionary"
+    EDict
+      <$> brackets (sepBy listSep ((,) <$> expr <* dictSep <*> expr))
+      <?> "dictionary"
 
-set : Parser s E
+set : Parser s Expression
 set =
   rec <| \() ->
-      ESet <$> brackets (sepBy listSep expr) <?> "set"
+    ESet
+      <$> brackets (sepBy listSep expr)
+      <?> "set"
 
-atom : Parser s E
+atom : Parser s Expression
 atom =
   rec <| \() ->
-      choice [ bool, float, int, str, attribute, identifier, list, tuple, dict, set ]
+    choice [ bool, float, int, str, attribute, identifier, list, tuple, dict, set ]
 
-expr : Parser s E
+expr : Parser s Expression
 expr =
   rec (\() -> chainl orop andExpr)
 
-andExpr : Parser s E
+andExpr : Parser s Expression
 andExpr =
   rec (\() -> chainl andop notExpr)
 
-notExpr : Parser s E
+notExpr : Parser s Expression
 notExpr =
   rec <| \() ->
-        (ws <| ENot <$> (string "not" *> notExpr)) <|> cmpExpr
+    (token <| ENot <$> (string "not" *> notExpr)) <|> cmpExpr
 
-cmpExpr : Parser s E
+cmpExpr : Parser s Expression
 cmpExpr =
   rec (\() -> chainl cmpop arithExpr)
 
-arithExpr : Parser s E
+arithExpr : Parser s Expression
 arithExpr =
   rec (\() -> chainl addop term)
 
-term : Parser s E
+term : Parser s Expression
 term =
   rec (\() -> chainl mulop factor)
 
-factor : Parser s E
+factor : Parser s Expression
 factor =
-  rec (\() -> ws (parens expr <|> app <|> atom))
+  rec (\() -> token (parens expr <|> app <|> atom))
 
-orop : Parser s (E -> E -> E)
+orop : Parser s (Expression -> Expression -> Expression)
 orop = EOr <$ string "or"
 
-andop : Parser s (E -> E -> E)
+andop : Parser s (Expression -> Expression -> Expression)
 andop = EAnd <$ string "and"
 
-cmpop : Parser s (E -> E -> E)
+cmpop : Parser s (Expression -> Expression -> Expression)
 cmpop = ECmp <$> choice [ string "<",  string ">"
                         , string "==", string "!="
                         , string ">=", string "<="
@@ -184,215 +200,221 @@ cmpop = ECmp <$> choice [ string "<",  string ">"
                         , string "is", (++) <$> keyword "is" <*> string "not"
                         ]
 
-addop : Parser s (E -> E -> E)
+addop : Parser s (Expression -> Expression -> Expression)
 addop = choice [ EAdd <$ string "+"
                , ESub <$ string "-"
                ]
 
-mulop : Parser s (E -> E -> E)
+mulop : Parser s (Expression -> Expression -> Expression)
 mulop = choice [ EMul <$ string "*"
                , EDiv <$ string "/"
                ]
 
-exprList : Parser s (List E)
+exprList : Parser s (List Expression)
 exprList = sepBy commaSep expr
 
-exprStmt : Parser s S
+exprStmt : Parser s Statement
 exprStmt = SExpr <$> expr <?> "expression"
 
-printStmt : Parser s S
+printStmt : Parser s Statement
 printStmt = SPrint <$> (keyword "print" *> exprList) <?> "print statement"
 
-delStmt : Parser s S
+delStmt : Parser s Statement
 delStmt = SDel <$> (keyword "del" *> exprList) <?> "del statement"
 
-passStmt : Parser s S
+passStmt : Parser s Statement
 passStmt = SPass <$ keyword "pass" <?> "pass statement"
 
-breakStmt : Parser s S
+breakStmt : Parser s Statement
 breakStmt = SBreak <$ keyword "break" <?> "break statement"
 
-continueStmt : Parser s S
+continueStmt : Parser s Statement
 continueStmt = SContinue <$ keyword "continue" <?> "continue statement"
 
-returnStmt : Parser s S
+returnStmt : Parser s Statement
 returnStmt = SReturn <$> (keyword "return" *> maybe expr) <?> "return statement"
 
-raiseStmt : Parser s S
+raiseStmt : Parser s Statement
 raiseStmt = SRaise <$> (keyword "raise" *> maybe exprList) <?> "raise statement"
 
-importAs : Parser s (List (E, Maybe E))
+importAs : Parser s (List (Expression, Maybe Expression))
 importAs =
   sepBy commaSep <| (,)
     <$> choice [ attribute, identifier ]
     <*> maybe (whitespace *> keyword "as" *> identifier)
 
-importStmt : Parser s S
+importStmt : Parser s Statement
 importStmt =
   SImport <$> (keyword "import" *> importAs)
           <?> "import statement"
 
-importFromStmt : Parser s S
+importFromStmt : Parser s Statement
 importFromStmt =
   SImportFrom <$> (keyword "from" *> choice [ attribute, identifier ] <* spaces)
               <*> (keyword "import" *> importAs)
               <?> "from statement"
 
-globalStmt : Parser s S
+globalStmt : Parser s Statement
 globalStmt = SGlobal <$> (keyword "global" *> sepBy commaSep identifier)
 
-assertStmt : Parser s S
+assertStmt : Parser s Statement
 assertStmt =
   SAssert <$> (keyword "assert" *> expr)
           <*> maybe (commaSep *> expr)
 
-assignop : Parser s (E -> E -> E)
-assignop = EAssign <$ ws (string "=")
+assignop : Parser s (Expression -> Expression -> Expression)
+assignop = EAssign <$ token (string "=")
 
-assignStmt : Parser s S
+assignStmt : Parser s Statement
 assignStmt = SAssign <$> (chainr assignop expr)
 
-indentation : Ctx -> Parser s res -> Parser s (Ctx, res)
-indentation cx p =
+indentation : Parser Indentation res -> Parser Indentation res
+indentation p =
   let
-    level = Maybe.withDefault 0 (List.head cx)
-    indentationp =
-      skip (count level (string " ")) <?> "expected indentation"
+    skipIndent stack =
+      let
+        current =
+          List.head stack
+            |> Maybe.withDefault 0
+
+        validate s =
+          let indent = String.length s in
+          if indent == current
+          then succeed ()
+          else fail ("expected " ++ toString current ++ " spaces of indentation")
+      in
+        spaces >>= validate
   in
-    indentationp *> map ((,) cx) p
+    withState skipIndent *> p
 
-indent : Ctx -> Parser s (Ctx, ())
-indent cx =
-  primitive <| \state stream ->
-    case Combine.app spaces state stream of
-      (_, _, Ok s) ->
-        let level = String.length s in
-        case cx of
-          [] ->
-            (state, stream, Err ["negative indentation"])
+indent : Parser Indentation ()
+indent =
+  rec <| \() ->
+    let
+      push s =
+        withState <| \stack ->
+          let indent = String.length s in
+          case stack of
+            [] ->
+              fail "negative indentation"
 
-          x::_ ->
-            if level > x
-            then (state, stream, Ok (level::cx, ()))
-            else (state, stream, Err ["expected indentation"])
+            current :: _ ->
+              if indent > current
+              then putState (indent :: stack)
+              else fail "expected indentation"
+    in
+      lookAhead <| spaces >>= push
 
-      (estate, estream, Err ms) ->
-        (estate, estream, Err ms)
+dedent : Parser Indentation ()
+dedent =
+  rec <| \() ->
+    let
+      pop s =
+        withState <| \stack ->
+          let rem = dropWhile ((/=) (String.length s)) stack in
+          case rem of
+            _ :: _ ->
+              putState rem
 
-dedent : Ctx -> Parser s (Ctx, ())
-dedent cx =
-  primitive <| \state stream ->
-    case Combine.app spaces state stream of
-      (_, _, Ok s) ->
-        let rcx = dropWhile ((/=) (String.length s)) cx in
-        case rcx of
-          _::_ ->
-            (state, stream, Ok (rcx, ()))
+            _ ->
+              fail "unindent does not match any outer indentation level"
+    in
+      spaces >>= pop
 
-          _ ->
-            (state, stream, Err ["unindent does not match any outer indentation level"])
+block : Parser Indentation (List CompoundStatement)
+block =
+  rec <| \() ->
+    string ":"
+      *> whitespace *> eol
+      *> indent
+      *> many1 stmt
+      <* dedent
 
-      (estate, estream, Err ms) ->
-        (estate, estream, Err ms)
+blockStmt : Parser Indentation (List CompoundStatement -> CompoundStatement) -> Parser Indentation CompoundStatement
+blockStmt p =
+  indentation p
+    |> andThen (\f -> block
+    |> andThen (\ss -> succeed (f ss)))
 
-block : Ctx -> Parser s (Ctx, List C)
-block cx =
-  string ":" *> whitespace *> eol *> indent cx
-    |> andThen (\(scx, _) -> many1 (stmt scx)
-    |> andThen (\ss -> dedent scx
-    |> andThen (\(rcx, _) -> succeed (rcx, List.map snd ss))))
+simpleStmt : Parser Indentation CompoundStatement
+simpleStmt =
+  rec <| \() ->
+    let
+      stmt = choice [ assertStmt, globalStmt, importFromStmt, importStmt
+                    , raiseStmt, returnStmt, continueStmt, breakStmt
+                    , passStmt, delStmt, printStmt, assignStmt, exprStmt
+                    ]
+    in
+      indentation (CSimple <$> sepBy (string ";" <* whitespace) stmt <* (() <$ eol <|> end))
 
-blockStmt : Ctx -> Parser s (List C -> C) -> Parser s (Ctx, C)
-blockStmt cx p =
-  indentation cx p
-    |> andThen (\(_, f) -> block cx
-    |> andThen (\(rcx, ss) -> succeed (rcx, f ss)))
-
-simpleStmt : Ctx -> Parser s (Ctx, C)
-simpleStmt cx =
-  let
-    stmt = choice [ assertStmt, globalStmt, importFromStmt, importStmt
-                  , raiseStmt, returnStmt, continueStmt, breakStmt
-                  , passStmt, delStmt, printStmt, assignStmt, exprStmt
-                  ]
-  in
-    indentation cx (CSimple <$> sepBy (string ";" <* whitespace) stmt <* eol)
-
-whileStmt : Parser s (List C -> C)
+whileStmt : Parser s (List CompoundStatement -> CompoundStatement)
 whileStmt =
   CWhile <$> (keyword "while" *> expr)
 
-forStmt : Parser s (List C -> C)
+forStmt : Parser s (List CompoundStatement -> CompoundStatement)
 forStmt =
   CFor <$> (keyword "for" *> identifier)
        <*> (spaces *> keyword "in" *> expr)
 
-withStmt : Parser s (List C -> C)
+withStmt : Parser s (List CompoundStatement -> CompoundStatement)
 withStmt =
   CWith
     <$> (keyword "with" *> expr)
     <*> maybe (keyword "as" *> identifier)
 
-funcStmt : Parser s (List C -> C)
+funcStmt : Parser s (List CompoundStatement -> CompoundStatement)
 funcStmt =
   CFunc
     <$> (keyword "def" *> identifier)
     <*> parens (sepBy commaSep identifier)
 
-compoundStmt : Ctx -> Parser s (Ctx, C)
-compoundStmt cx =
-  let
-    parsers = [ whileStmt, forStmt, withStmt, funcStmt ]
-  in choice <| List.map (\p -> blockStmt cx p) parsers
+compoundStmt : Parser Indentation CompoundStatement
+compoundStmt =
+  rec <| \() ->
+    let
+      parsers = List.map blockStmt [ whileStmt
+                                   , forStmt
+                                   , withStmt
+                                   , funcStmt
+                                   ]
+    in
+      choice parsers
 
-stmt : Ctx -> Parser s (Ctx, C)
-stmt cx = compoundStmt cx <|> simpleStmt cx
+stmt : Parser Indentation CompoundStatement
+stmt =
+  rec <| \() ->
+    compoundStmt <|> simpleStmt
 
-program : Parser s (List C)
-program =
-  let
-    all acc cx state stream =
-      if stream.input == ""
-      then (state, stream, Ok (List.reverse acc))
-      else
-        case Combine.app (stmt cx) state stream of
-          (rstate, rstream, Ok (rcx, res)) ->
-            all (res :: acc) rcx state stream
-
-          (estate, estream, Err ms) ->
-            (estate, estream, Err ms)
-  in
-    primitive <| all [] [0]
-
+program : Parser Indentation (List CompoundStatement)
+program = manyTill stmt end
 
 formatError : List String -> InputStream -> String
 formatError ms stream =
   let
     location = currentLocation stream
-    separator = "|> "
+    separator = "| "
     expectationSeparator = "\n  * "
     lineNumberOffset = floor (logBase 10 (toFloat location.line)) + 1
     separatorOffset = String.length separator
     padding = location.column + separatorOffset + 2
   in
   "Parse error around line:\n\n"
-    ++ toString location.line ++ separator ++ location.sourceLine ++ "\n"
+    ++ toString location.line ++ separator ++ location.source ++ "\n"
     ++ String.padLeft padding ' ' "^"
     ++ "\nI expected one of the following:\n"
     ++ expectationSeparator
     ++ String.join expectationSeparator ms
 
-
-parse : String -> Result String (List C)
+parse : String -> Result String (List CompoundStatement)
 parse s =
-  case Combine.parse program (s ++ "\n") of
+  case Combine.runParser program initIndentation s of
     (_, _, Ok es) ->
       Ok es
 
     (_, stream, Err ms) ->
       Err <| formatError ms stream
 
-test : Result String (List C)
+test : Result String (List CompoundStatement)
 test =
   parse """import os
 

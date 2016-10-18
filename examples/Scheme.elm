@@ -156,7 +156,7 @@ formatError ms stream =
     padding = location.column + separatorOffset + 2
   in
   "Parse error around line:\n\n"
-    ++ toString location.line ++ separator ++ location.sourceLine ++ "\n"
+    ++ toString location.line ++ separator ++ location.source ++ "\n"
     ++ String.padLeft padding ' ' "^"
     ++ "\nI expected one of the following:\n"
     ++ expectationSeparator
