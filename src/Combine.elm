@@ -115,7 +115,7 @@ included in the standard distribution.
 
 [issues]: https://github.com/Bogdanp/elm-combine/issues
 -}
-primitive : (ParseFn state res) -> Parser state res
+primitive : (state -> InputStream -> ParseContext state res) -> Parser state res
 primitive = Parser
 
 
@@ -135,11 +135,11 @@ some internal state.
 
     import Combine.Num exposing (int)
 
-    parse int "123" ==
-      (Ok 123, { input = "", position = 3 })
+    parse int "123"
+    -- Ok 123
 
-    parse int "abc" ==
-      (Err ["expected an integer"], { input = "abc", position = 0 })
+    parse int "abc"
+    -- Err ["expeccted an integer"]
 
  -}
 parse : Parser () res -> String -> ParseContext () res
@@ -171,21 +171,21 @@ function to avoid "bad-recursion" errors.
     list =
       let
         -- helper is itself a function so we avoid the case where the
-        -- value `list` calls itself prematurely.
+        -- value `list` tries to apply itself in its definition.
         helper () =
           EList <$> between (string "(") (string ")") (many (term <|> list))
       in
         -- rec defers calling helper until it's actually needed.
         rec helper
 
-    parse list "" ==
-      (Err ["expected \"(\""], { input = "", position = 0 })
+    parse list ""
+    -- Err ["expected \"(\""]
 
-    parse list "()" ==
-      (Ok (EList []), { input = "", position = 2 })
+    parse list "()"
+    -- Ok (EList [])
 
-    parse list "(a (b c))" ==
-      (Ok (EList [ETerm "a", EList [ETerm "b", ETerm "c"]]), { input = "", position = 9 })
+    parse list "(a (b c))"
+    -- Ok (EList [ETerm "a", EList [ETerm "b", ETerm "c"]])
 
 -}
 rec : (() -> Parser s a) -> Parser s a
@@ -301,8 +301,8 @@ currentColumn = currentLocation >> .column
         string "a"
           |> map String.toUpper
     in
-      parse parser "a" ==
-        (Ok "A", { input = "", position = 1 })
+      parse parser "a"
+      -- Ok "A"
 
 -}
 map : (a -> b) -> Parser s a -> Parser s b
@@ -316,8 +316,8 @@ map f p = bimap f identity p
         string "a"
           |> mapError (always ["bad input"])
     in
-      parse parser b ==
-        (Err ["bad input"], { input = "b", position = 0 })
+      parse parser b
+      -- Err ["bad input"]
 
 -}
 mapError : (List String -> List String) -> Parser s a -> Parser s a
@@ -342,14 +342,14 @@ parser is returned on success.
         int
           |> andThen createParser
 
-    parse choosy "1 is odd" ==
-      (Ok " is odd", { input = "", position = 8 })
+    parse choosy "1 is odd"
+    -- Ok " is odd"
 
-    parse choosy "1 is even" ==
-      (Err ["expected \" is odd\""], { input = " is even", position = 1 })
+    parse choosy "2 is even"
+    -- Ok " is even"
 
-    parse choosy "2 is even" ==
-      (Ok " is even", { input = "", position = 9 })
+    parse choosy "1 is even"
+    -- Err ["expected \" is odd\""]
 
 -}
 andThen : (a -> Parser s b) -> Parser s a -> Parser s b
@@ -369,14 +369,25 @@ andThen f p =
     import Result
     import String
 
+    toInt : String -> Int
+    toInt =
+      String.toInt
+        >> Result.toMaybe
+        >> Maybe.withDefault 0
+
     num : Parser s Int
-    num = (Maybe.withDefault 0 << Result.toMaybe << String.toInt) `map` regex "[0-9]+"
+    num =
+      regex "[0-9]+"
+        |> map toInt
 
     sum : Parser s Int
-    sum = (+) `map` (num <* string "+") `andMap` num
+    sum =
+      (num <* string "+")
+        |> map (+)
+        |> andMap num
 
-    parse sum "1+2" ==
-      (Ok 3, { input = "", position = 3 })
+    parse sum "1+2"
+    -- Ok 3
 
 -}
 andMap : Parser s a -> Parser s (a -> b) -> Parser s b
@@ -388,11 +399,11 @@ main use case for this parser is when you want to combine a list of
 parsers into a single, top-level, parser.  For most use cases, you'll
 want to use one of the other combinators instead.
 
-    parse (sequence [string "a", string "b"]) "ab" ==
-      (Ok ["a", "b"], { input = "", position = 2 })
+    parse (sequence [string "a", string "b"]) "ab"
+    -- Ok ["a", "b"]
 
-    parse (sequence [string "a", string "b"]) "ac" ==
-      (Err ["expected \"b\"", { input = "c", position = 1 })
+    parse (sequence [string "a", string "b"]) "ac"
+    -- Err ["expected \"b\""]
 
  -}
 sequence : List (Parser s a) -> Parser s (List a)
@@ -419,8 +430,8 @@ sequence ps =
 -- -----------
 {-| Fail without consuming any input.
 
-    parse (fail "some error") "hello" ==
-      (Err ["some error"], { input = "a", position = 0 })
+    parse (fail "some error") "hello"
+    -- Err ["some error"]
 
 -}
 fail : String -> Parser s a
@@ -437,8 +448,8 @@ emptyErr =
 
 {-| Return a value without consuming any input.
 
-    parse (succeed 1) "a" ==
-      (Ok 1, { input = "a", position = 0 })
+    parse (succeed 1) "a"
+    -- Ok 1
 
 -}
 succeed : a -> Parser s a
@@ -449,11 +460,11 @@ succeed res =
 
 {-| Parse an exact string match.
 
-    parse (string "hello") "hello world" ==
-      (Ok "hello", { input = " world", position = 5 })
+    parse (string "hello") "hello world"
+    -- Ok "hello"
 
-    parse (string "hello") "goodbye" ==
-      (Err ["expected \"hello\""], { input = "goodbye", position = 0 })
+    parse (string "hello") "goodbye"
+    -- Err ["expected \"hello\""]
 
 -}
 string : String -> Parser s String
@@ -475,8 +486,8 @@ Regular expressions must match from the beginning of the input and their
 subgroups are ignored. A `^` is added implicitly to the beginning of
 every pattern unless one already exists.
 
-    parse (regex "a+") "aaaaab" ==
-      (Ok "aaaaa", { input = "b", position = 5 })
+    parse (regex "a+") "aaaaab"
+    -- Ok "aaaaa"
 
 -}
 regex : String -> Parser s String
@@ -501,8 +512,8 @@ regex pat =
 
 {-| Consume input while the predicate matches.
 
-    parse (while ((/=) ' ')) "test 123" ==
-      (Ok "test", { input = " 123", position = 4 })
+    parse (while ((/=) ' ')) "test 123"
+    -- Ok "test"
 
 -}
 while : (Char -> Bool) -> Parser s String
@@ -533,8 +544,11 @@ while pred =
 
 {-| Fail when the input is not empty.
 
-    parse end "" == (Ok (), { input = "", position = 0 })
-    parse end "a" == (Err ["expected end of input"], { input = "a", position = 0 })
+    parse end ""
+    -- Ok ()
+
+    parse end "a"
+    -- Err ["expected end of input"]
 
 -}
 end : Parser s ()
@@ -559,14 +573,14 @@ lookAhead p =
 
 {-| Choose between two parsers.
 
-    parse (string "a" `or` string "b") "a" ==
-      (Ok "a", { input = "", position = 1 })
+    parse (or (string "a") (string "b")) "a"
+    -- Ok "a"
 
-    parse (string "a" `or` string "b") "b" ==
-      (Ok "b", { input = "", position = 1 })
+    parse (or (string "a") (string "b")) "b"
+    -- Ok "b"
 
-    parse (string "a" `or` string "b") "c" ==
-      (Err ["expected \"a\"", "expected \"b\""], { input = "c", position = 0 })
+    parse (or (string "a") (string "b")) "c"
+    -- Err ["expected \"a\"", "expected \"b\""]
 
 -}
 or : Parser s a -> Parser s a -> Parser s a
@@ -587,11 +601,11 @@ or lp rp =
 
 {-| Choose between a list of parsers.
 
-    parse (choice [string "a", string "b"]) "a" ==
-      (Ok "a", { input = "", position = 1 })
+    parse (choice [string "a", string "b"]) "a"
+    -- Ok "a"
 
-    parse (choice [string "a", string "b"]) "b" ==
-      (Ok "b", { input = "", position = 1 })
+    parse (choice [string "a", string "b"]) "b"
+    -- Ok "b"
 
 -}
 choice : List (Parser s a) -> Parser s a
@@ -604,8 +618,11 @@ choice xs =
     letterA : Parser s String
     letterA = optional "a" (string "a")
 
-    parse letterA "a" == (Ok "a", { input = "", position = 1 })
-    parse letterA "b" == (Ok "a", { input = "b", position = 0 })
+    parse letterA "a"
+    -- Ok "a"
+
+    parse letterA "b"
+    -- Ok "a"
 
 -}
 optional : a -> Parser s a -> Parser s a
@@ -615,11 +632,11 @@ optional res p =
 
 {-| Wrap the return value into a `Maybe`. Returns `Nothing` on failure.
 
-    parse (maybe (string "a")) "a" ==
-      (Ok (Just "a"), { input = "", position = 1 })
+    parse (maybe (string "a")) "a"
+    -- Ok (Just "a")
 
-    parse (maybe (string "a")) "b" ==
-      (Ok Nothing, { input = "b", position = 0 })
+    parse (maybe (string "a")) "b"
+    -- Ok Nothing
 
 -}
 maybe : Parser s a -> Parser s (Maybe a)
@@ -635,11 +652,11 @@ maybe p =
 
 {-| Apply a parser until it fails and return a list of the results.
 
-    parse (many (string "a")) "aaab" ==
-      (Ok ["a", "a", "a"], { input = "b", position = 3 })
+    parse (many (string "a")) "aaab"
+    -- Ok ["a", "a", "a"]
 
-    parse (many (string "a")) "" ==
-      (Ok [], { input = "", position = 0 })
+    parse (many (string "a")) ""
+    -- Ok []
 
 -}
 many : Parser s a -> Parser s (List a)
@@ -665,11 +682,11 @@ many p =
 
 {-| Parse at least one result.
 
-    parse (many1 (string "a")) "a" ==
-      (Ok ["a"], { input = "", position = 1 })
+    parse (many1 (string "a")) "a"
+    -- Ok ["a"]
 
-    parse (many1 (string "a")) "" ==
-      (Err ["expected \"a\""], { input = "", position = 0 })
+    parse (many1 (string "a")) ""
+    -- Err ["expected \"a\""]
 
 -}
 many1 : Parser s a -> Parser s (List a)
@@ -704,14 +721,14 @@ manyTill p end =
 
 {-| Parser zero or more occurences of one parser separated by another.
 
-    parse (sepBy (string ",") (string "a")) "b" ==
-      (Ok [], { input = "b", position = 0 })
+    parse (sepBy (string ",") (string "a")) "b"
+    -- Ok []
 
-    parse (sepBy (string ",") (string "a")) "a,a,a" ==
-      (Ok ["a", "a", "a"], { input = "", position = 5 })
+    parse (sepBy (string ",") (string "a")) "a,a,a"
+    -- Ok ["a", "a", "a"]
 
-    parse (sepBy (string ",") (string "a")) "a,a,b" ==
-      (Ok ["a", "a"], { input = ",b", position = 3 })
+    parse (sepBy (string ",") (string "a")) "a,a,b"
+    -- Ok ["a", "a"]
 
 -}
 sepBy : Parser s x -> Parser s a -> Parser s (List a)
@@ -728,8 +745,8 @@ sepBy1 sep p =
 {-| Parse zero or more occurences of one parser separated and
 optionally ended by another.
 
-    parse (sepEndBy (string ",") (string "a")) "a,a,a," ==
-      (Ok ["a", "a", "a"], { input = "", position = 6 })
+    parse (sepEndBy (string ",") (string "a")) "a,a,a,"
+    -- Ok ["a", "a", "a"]
 
 -}
 sepEndBy : Parser s x -> Parser s a -> Parser s (List a)
@@ -740,14 +757,14 @@ sepEndBy sep p =
 {-| Parse one or more occurences of one parser separated and
 optionally ended by another.
 
-    parse (sepEndBy1 (string ",") (string "a")) "" ==
-      (Err ["expected \"a\""], { input = "", position = 0 })
+    parse (sepEndBy1 (string ",") (string "a")) ""
+    -- Err ["expected \"a\""]
 
-    parse (sepEndBy1 (string ",") (string "a")) "a" ==
-      (Ok ["a"], { input = "", position = 1 })
+    parse (sepEndBy1 (string ",") (string "a")) "a"
+    -- Ok ["a"]
 
-    parse (sepEndBy1 (string ",") (string "a")) "a," ==
-      (Ok ["a"], { input = "", position = 2 })
+    parse (sepEndBy1 (string ",") (string "a")) "a,"
+    -- Ok ["a"]
 
 -}
 sepEndBy1 : Parser s x -> Parser s a -> Parser s (List a)
@@ -850,8 +867,8 @@ whitespace = regex "[ \t\r\n]*" <?> "whitespace"
 {-| Variant of `Combine.mapError` that replaces the Parser's error
 with a List of a single string.
 
-    parse (string "a" <?> "gimme an 'a'") "b" ==
-      (Err ["gimme an 'a'"], { input = "b", position = 0 })
+    -- Err ["gimme an 'a'"]
+    parse (string "a" <?> "gimme an 'a'") "b"
 
 -}
 (<?>) : Parser s a -> String -> Parser s a
@@ -890,8 +907,8 @@ with a List of a single string.
       regex "[a-z]"
         <* regex "[!?]"
 
-    parse unsuffix "a!" ==
-      (Ok "a", { input = "", position = 2 })
+    parse unsuffix "a!"
+    -- Ok "a"
 
 -}
 (<*) : Parser s a -> Parser s x -> Parser s a
@@ -909,8 +926,8 @@ with a List of a single string.
         *> while ((==) ' ')
         *> while ((/=) ' ')
 
-    parse unprefix "> a" ==
-      (Ok "a", { input = "", position = 3 })
+    parse unprefix "> a"
+    -- Ok "a"
 
 -}
 (*>) : Parser s x -> Parser s a -> Parser s a
