@@ -7,7 +7,7 @@
 * The `Combine.Infix` module has been merged into `Combine` *BREAKING*
 * The `Parser` type has changed from `Parser res` to `Parser state res` *BREAKING*
 * The signature of `andThen` has changed to `(a -> Parser s b) -> Parser s a -> Parser s b` *BREAKING*
-* The signature of `parse` has changed to `Parser () res -> String -> Result (ParseErr ()) (ParseOk () res)`
+* The signature of `parse` has changed to `Parser () res -> String -> Result (ParseErr ()) (ParseOk () res)` *BREAKING*
 
 ### Additions
 
