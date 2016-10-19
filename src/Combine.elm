@@ -148,19 +148,68 @@ app p =
 some internal state.
 
     import Combine.Num exposing (int)
+    import String
 
-    parse int "123"
+    parseAnInteger : String -> Result String Int
+    parseAnInteger input =
+      case parse int "abc" of
+        Ok (_, stream, result) ->
+          Ok result
+
+        Err (_, stream, errors) ->
+          Err (String.join " or " errors)
+
+    parseAnInteger "123"
     -- Ok 123
 
-    parse int "abc"
-    -- Err ["expected an integer"]
+    parseAnInteger "abc"
+    -- Err "expected an integer"
 
  -}
 parse : Parser () res -> String -> Result (ParseErr ()) (ParseOk () res)
 parse p = runParser p ()
 
 
-{-| Parse a string while maintaining some internal state. -}
+{-| Parse a string while maintaining some internal state.
+
+    import Combine.Num exposing (int)
+    import String
+
+    type alias Output =
+      { count : Int
+      , integers : List Int
+      }
+
+    statefulInt : Parse Int Int
+    statefulInt =
+      -- Parse an int, then increment the state and return the parsed
+      -- int.  It's important that we try to parse the int _first_
+      -- since modifying the state will always succeed.
+      int <* modifyState ((+) 1)
+
+    ints : Parse Int (List Int)
+    ints =
+      sepBy (string " ") statefulInt
+
+    parseIntegers : String -> Result String Output
+    parseIntegers input =
+      case runParser ints 0 input of
+        Ok (state, stream, ints) ->
+          Ok { count = state, integers = ints }
+
+        Err (state, stream, errors) ->
+          Err (String.join " or " errors)
+
+    parseIntegers ""
+    -- Ok { count = 0, integers = [] }
+
+    parseIntegers "1 2 3 45"
+    -- Ok { count = 4, integers = [1, 2, 3, 45] }
+
+    parseIntegers "1 a 2"
+    -- Ok { count = 1, integers = [1] }
+
+-}
 runParser : Parser state res -> state -> String -> Result (ParseErr state) (ParseOk state res)
 runParser p st s =
   case app p st (initStream s) of
