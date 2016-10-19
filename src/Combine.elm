@@ -449,11 +449,14 @@ andThen f p =
 
     import Combine.Num exposing (int)
 
+    plus : Parser s String
+    plus = string "+"
+
     sum : Parser s Int
     sum =
       int
         |> map (+)
-        |> andMap int
+        |> andMap (plus *> int)
 
     parse sum "1+2"
     -- Ok 3
