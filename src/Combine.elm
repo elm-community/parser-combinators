@@ -152,7 +152,7 @@ some internal state.
 
     parseAnInteger : String -> Result String Int
     parseAnInteger input =
-      case parse int "abc" of
+      case parse int input of
         Ok (_, stream, result) ->
           Ok result
 
