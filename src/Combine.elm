@@ -2,7 +2,7 @@ module Combine
   exposing
     ( Parser, InputStream, ParseLocation, ParseContext, ParseResult, ParseErr, ParseOk
     , primitive, rec
-    , app, parse, runParser
+    , parse, runParser
     , withState, putState, modifyState
     , withLocation, withLine, withColumn, currentLocation, currentSourceLine, currentLine, currentColumn
     , map, mapError
@@ -24,7 +24,7 @@ module Combine
 @docs primitive, rec
 
 ## Running a Parser
-@docs app, parse, runParser
+@docs parse, runParser
 
 ## Managing state
 @docs withState, putState, modifyState, withLocation, withLine, withColumn, currentLocation, currentSourceLine, currentLine, currentColumn

@@ -2,12 +2,17 @@
 
 ## elm-combine 3.0.0 (TBD)
 
-### Changes
+### Breaking changes
 
-* The `Combine.Infix` module has been merged into `Combine` *BREAKING*
-* The `Parser` type has changed from `Parser res` to `Parser state res` *BREAKING*
-* The signature of `andThen` has changed to `(a -> Parser s b) -> Parser s a -> Parser s b` *BREAKING*
-* The signature of `parse` has changed to `Parser () res -> String -> Result (ParseErr ()) (ParseOk () res)` *BREAKING*
+* The `Combine.Infix` module has been merged into `Combine`
+* The `Parser` type has changed from `Parser res` to `Parser state res`
+* The signature of `andThen` has changed to `(a -> Parser s b) -> Parser s a -> Parser s b`
+* The signature of `parse` has changed to `Parser () res -> String -> Result (ParseErr ()) (ParseOk () res)`
+
+### Removals
+
+* Removed `app`
+* Removed `bimap`
 
 ### Additions
 
@@ -15,10 +20,6 @@
 * Added `runParser`, `withState`, `putState`, `modifyState`
 * Added `withLocation`, `withLine`, `withColumn`, `currentLocation`, `currentSourceLine`, `currentLine`, `currentColumn`
 * Added `lookAhead` and `whitespace` parsers
-
-### Removals
-
-* Removed `bimap`
 
 ### Upgrading from 2.2.1
 
