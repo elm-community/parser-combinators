@@ -42,8 +42,8 @@ factor =
 calc : String -> Result String Int
 calc s =
   case parse (expr <* end) s of
-    (_, _, Ok n) ->
+    Ok (_, _, n) ->
       Ok n
 
-    (_, stream, Err ms) ->
+    Err (_, stream, ms) ->
       Err ("parse error: " ++ (toString ms) ++ ", " ++ (toString stream))

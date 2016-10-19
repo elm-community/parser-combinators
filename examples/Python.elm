@@ -408,10 +408,10 @@ formatError ms stream =
 parse : String -> Result String (List CompoundStatement)
 parse s =
   case Combine.runParser program initIndentation s of
-    (_, _, Ok es) ->
+    Ok (_, _, es) ->
       Ok es
 
-    (_, stream, Err ms) ->
+    Err (_, stream, ms) ->
       Err <| formatError ms stream
 
 test : Result String (List CompoundStatement)

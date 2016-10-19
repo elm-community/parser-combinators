@@ -165,8 +165,8 @@ formatError ms stream =
 parse : String -> Result String (List E)
 parse s =
   case Combine.parse program s of
-    (_, _, Ok e) ->
+    Ok (_, _, e) ->
       Ok e
 
-    (_, stream, Err ms) ->
+    Err (_, stream, ms) ->
       Err <| formatError ms stream

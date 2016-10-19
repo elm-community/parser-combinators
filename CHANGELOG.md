@@ -6,11 +6,12 @@
 
 * The `Combine.Infix` module has been merged into `Combine` *BREAKING*
 * The `Parser` type has changed from `Parser res` to `Parser state res` *BREAKING*
-* The signature of `andThen` has changed from `Parser s a -> (a -> Parser s b) -> Parser s b)` to `(a -> Parser s b) -> Parser s a -> Parser s b` *BREAKING*
+* The signature of `andThen` has changed to `(a -> Parser s b) -> Parser s a -> Parser s b` *BREAKING*
+* The signature of `parse` has changed to `Parser () res -> String -> Result (ParseErr ()) (ParseOk () res)`
 
 ### Additions
 
-* Added `InputStream`, `ParseLocation`, `ParseContext` and `ParseResult` types
+* Added `InputStream`, `ParseLocation`, `ParseContext`, `ParseResult`, `ParseErr` and `ParseOk` types
 * Added `runParser`, `withState`, `putState`, `modifyState`
 * Added `withLocation`, `withLine`, `withColumn`, `currentLocation`, `currentSourceLine`, `currentLine`, `currentColumn`
 * Added `lookAhead` and `whitespace` parsers
@@ -31,7 +32,7 @@ case Combine.parse someParser inputData of
   (Ok result, context) ->
     Just result
 
-  (Err messages, context) ->
+  (Err errors, context) ->
     Nothing
 ```
 
@@ -39,10 +40,10 @@ becomes
 
 ``` elm
 case Combine.parse someParser inputData of
-  (state, stream, Ok result) ->
+  Ok (state, stream, result) ->
     Just result
 
-  (state, stream, Err messages) ->
+  Err (state, stream, errors) ->
     Nothing
 ```
 

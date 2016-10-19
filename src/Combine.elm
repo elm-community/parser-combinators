@@ -1,6 +1,6 @@
 module Combine
   exposing
-    ( Parser, InputStream, ParseLocation, ParseContext, ParseResult
+    ( Parser, InputStream, ParseLocation, ParseContext, ParseResult, ParseErr, ParseOk
     , primitive, rec
     , app, parse, runParser
     , withState, putState, modifyState
@@ -18,7 +18,7 @@ module Combine
 {-| This library provides reasonably fast parser combinators.
 
 # Types
-@docs Parser, InputStream, ParseLocation, ParseContext, ParseResult
+@docs Parser, InputStream, ParseLocation, ParseContext, ParseResult, ParseErr, ParseOk
 
 ## Constructing Parsers
 @docs primitive, rec
@@ -92,6 +92,20 @@ type alias ParseResult res =
   Result (List String) res
 
 
+{-| A tuple representing a failed parse.  It contains the state after
+running the parser, the remaining input stream and a list of
+error messages. -}
+type alias ParseErr state =
+  (state, InputStream, List String)
+
+
+{-| A tuple representing a successful parse.  It contains the state
+after running the parser, the remaining input stream and the
+result. -}
+type alias ParseOk state res =
+  (state, InputStream, res)
+
+
 type alias ParseFn state res =
   state -> InputStream -> ParseContext state res
 
@@ -139,16 +153,22 @@ some internal state.
     -- Ok 123
 
     parse int "abc"
-    -- Err ["expeccted an integer"]
+    -- Err ["expected an integer"]
 
  -}
-parse : Parser () res -> String -> ParseContext () res
+parse : Parser () res -> String -> Result (ParseErr ()) (ParseOk () res)
 parse p = runParser p ()
 
 
 {-| Parse a string while maintaining some internal state. -}
-runParser : Parser state res -> state -> String -> ParseContext state res
-runParser p st s = app p st (initStream s)
+runParser : Parser state res -> state -> String -> Result (ParseErr state) (ParseOk state res)
+runParser p st s =
+  case app p st (initStream s) of
+      (state, stream, Ok res) ->
+        Ok (state, stream, res)
+
+      (state, stream, Err ms) ->
+        Err (state, stream, ms)
 
 
 {-| Defer running a parser until it's actually required.  Use this
