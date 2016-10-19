@@ -28,6 +28,21 @@ calcSuite =
       ]
 
 
+manySuite : Test
+manySuite =
+  suite
+    "many tests"
+    [ test "many basic"
+        <| assertEqual
+             (parse (many (string "a")) "aaab")
+             (Ok ["a", "a", "a"], { input = "b", position = 3 })
+    , test "many stop on no consumption"
+        <| assertEqual
+             (parse (many (succeed 1)) "aaab")
+             (Ok [], { input = "aaab", position = 0 })
+    ]
+
+
 manyTillSuite : Test
 manyTillSuite =
   suite
@@ -121,6 +136,7 @@ all =
   suite
     "Combine test suite"
     [ calcSuite
+    , manySuite
     , manyTillSuite
     , sepEndBySuite
     , sepEndBy1Suite
