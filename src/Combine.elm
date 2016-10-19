@@ -20,7 +20,7 @@ into concrete Elm values.
 ## API Reference
 
 * [Core Types](#core-types)
-* [Running Parsers](#running-parser)
+* [Running Parsers](#running-parsers)
 * [Parsers](#parsers)
 * [Combinators](#combinators)
   * [Transforming Parsers](#transforming-parsers)
