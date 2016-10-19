@@ -24,6 +24,27 @@
 * Replace all occurrences of `Parser *` with `Parser s *`
 * Replace all infix occurrences of andThen with `a |> andThen b`
 * Replace all imports of `Combine.Infix` with `Combine`
+* Replace all pattern matches on `Combine.parse` like so:
+
+``` elm
+case Combine.parse someParser inputData of
+  (Ok result, context) ->
+    Just result
+
+  (Err messages, context) ->
+    Nothing
+```
+
+becomes
+
+``` elm
+case Combine.parse someParser inputData of
+  (state, stream, Ok result) ->
+    Just result
+
+  (state, stream, Err messages) ->
+    Nothing
+```
 
 ## elm-combine 2.2.1 (2016-05-11)
 
