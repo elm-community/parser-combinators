@@ -101,7 +101,7 @@ identifier = EIdentifier <$> regex "[_a-zA-Z][_a-zA-Z0-9]*" <?> "identifier"
 
 attribute : Parser s Expression
 attribute =
-  rec <| \() ->
+  lazy <| \() ->
     EAttribute
       <$> identifier <* string "."
       <*> choice [ attribute, identifier ]
@@ -109,7 +109,7 @@ attribute =
 
 app : Parser s Expression
 app =
-  rec <| \() ->
+  lazy <| \() ->
     EApp
       <$> choice [ attribute, identifier ]
       <*> parens exprList
@@ -126,65 +126,65 @@ listSep = regex ",[ \t\r\n]*"
 
 list : Parser s Expression
 list =
-  rec <| \() ->
+  lazy <| \() ->
     EList
       <$> brackets (sepBy listSep expr)
       <?> "list"
 
 tuple : Parser s Expression
 tuple =
-  rec <| \() ->
+  lazy <| \() ->
     ETuple
       <$> parens (sepBy listSep expr)
       <?> "tuple"
 
 dict : Parser s Expression
 dict =
-  rec <| \() ->
+  lazy <| \() ->
     EDict
       <$> brackets (sepBy listSep ((,) <$> expr <* dictSep <*> expr))
       <?> "dictionary"
 
 set : Parser s Expression
 set =
-  rec <| \() ->
+  lazy <| \() ->
     ESet
       <$> brackets (sepBy listSep expr)
       <?> "set"
 
 atom : Parser s Expression
 atom =
-  rec <| \() ->
+  lazy <| \() ->
     choice [ bool, float, int, str, attribute, identifier, list, tuple, dict, set ]
 
 expr : Parser s Expression
 expr =
-  rec (\() -> chainl orop andExpr)
+  lazy (\() -> chainl orop andExpr)
 
 andExpr : Parser s Expression
 andExpr =
-  rec (\() -> chainl andop notExpr)
+  lazy (\() -> chainl andop notExpr)
 
 notExpr : Parser s Expression
 notExpr =
-  rec <| \() ->
+  lazy <| \() ->
     (token <| ENot <$> (string "not" *> notExpr)) <|> cmpExpr
 
 cmpExpr : Parser s Expression
 cmpExpr =
-  rec (\() -> chainl cmpop arithExpr)
+  lazy (\() -> chainl cmpop arithExpr)
 
 arithExpr : Parser s Expression
 arithExpr =
-  rec (\() -> chainl addop term)
+  lazy (\() -> chainl addop term)
 
 term : Parser s Expression
 term =
-  rec (\() -> chainl mulop factor)
+  lazy (\() -> chainl mulop factor)
 
 factor : Parser s Expression
 factor =
-  rec (\() -> token (parens expr <|> app <|> atom))
+  lazy (\() -> token (parens expr <|> app <|> atom))
 
 orop : Parser s (Expression -> Expression -> Expression)
 orop = EOr <$ string "or"
@@ -289,7 +289,7 @@ indentation p =
 
 indent : Parser Indentation ()
 indent =
-  rec <| \() ->
+  lazy <| \() ->
     let
       push s =
         withState <| \stack ->
@@ -307,7 +307,7 @@ indent =
 
 dedent : Parser Indentation ()
 dedent =
-  rec <| \() ->
+  lazy <| \() ->
     let
       pop s =
         withState <| \stack ->
@@ -323,7 +323,7 @@ dedent =
 
 block : Parser Indentation (List CompoundStatement)
 block =
-  rec <| \() ->
+  lazy <| \() ->
     string ":"
       *> whitespace *> eol
       *> indent
@@ -338,7 +338,7 @@ blockStmt p =
 
 simpleStmt : Parser Indentation CompoundStatement
 simpleStmt =
-  rec <| \() ->
+  lazy <| \() ->
     let
       stmt = choice [ assertStmt, globalStmt, importFromStmt, importStmt
                     , raiseStmt, returnStmt, continueStmt, breakStmt
@@ -370,7 +370,7 @@ funcStmt =
 
 compoundStmt : Parser Indentation CompoundStatement
 compoundStmt =
-  rec <| \() ->
+  lazy <| \() ->
     let
       parsers = List.map blockStmt [ whileStmt
                                    , forStmt
@@ -382,7 +382,7 @@ compoundStmt =
 
 stmt : Parser Indentation CompoundStatement
 stmt =
-  rec <| \() ->
+  lazy <| \() ->
     compoundStmt <|> simpleStmt
 
 program : Parser Indentation (List CompoundStatement)

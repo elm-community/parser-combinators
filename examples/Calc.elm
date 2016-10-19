@@ -24,7 +24,7 @@ expr =
     go () =
       chainl addop term
   in
-    rec go
+    lazy go
 
 term : Parser s Int
 term =
@@ -32,7 +32,7 @@ term =
     go () =
       chainl mulop factor
   in
-    rec go
+    lazy go
 
 factor : Parser s Int
 factor =

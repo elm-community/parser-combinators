@@ -123,27 +123,13 @@ unquoteSplice =
 
 expr : Parser s E
 expr =
-  rec <| \() ->
+  lazy <| \() ->
     let parsers = [ bool, float, int, char, str, identifier, list, vector
                   , quote, quasiquote, unquote, unquoteSplice, comment ]
     in whitespace *> choice parsers <* whitespace
 
 program : Parser s (List E)
-program =
-  let
-    all acc state stream =
-      if stream.input == ""
-      then
-        (state, stream, Ok (List.reverse acc))
-      else
-        case app expr state stream of
-          (rstate, rstream, Ok res) ->
-            all (res :: acc) rstate rstream
-
-          (estate, estream, Err ms) ->
-            (estate, estream, Err ms)
-  in
-    primitive <| all []
+program = manyTill expr end
 
 formatError : List String -> InputStream -> String
 formatError ms stream =

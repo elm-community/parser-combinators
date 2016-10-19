@@ -1,7 +1,7 @@
 module Combine
   exposing
     ( Parser, InputStream, ParseLocation, ParseContext, ParseResult, ParseErr, ParseOk
-    , primitive, rec
+    , primitive, lazy
     , parse, runParser
     , withState, putState, modifyState
     , withLocation, withLine, withColumn, currentLocation, currentSourceLine, currentLine, currentColumn
@@ -21,7 +21,7 @@ module Combine
 @docs Parser, InputStream, ParseLocation, ParseContext, ParseResult, ParseErr, ParseOk
 
 ## Constructing Parsers
-@docs primitive, rec
+@docs primitive, lazy
 
 ## Running a Parser
 @docs parse, runParser
@@ -244,8 +244,8 @@ function to avoid "bad-recursion" errors.
         helper () =
           EList <$> between (string "(") (string ")") (many (term <|> list))
       in
-        -- rec defers calling helper until it's actually needed.
-        rec helper
+        -- lazy defers calling helper until it's actually needed.
+        lazy helper
 
     parse list ""
     -- Err ["expected \"(\""]
@@ -257,8 +257,8 @@ function to avoid "bad-recursion" errors.
     -- Ok (EList [ETerm "a", EList [ETerm "b", ETerm "c"]])
 
 -}
-rec : (() -> Parser s a) -> Parser s a
-rec t = RecursiveParser (L.lazy (\() -> app (t ())))
+lazy : (() -> Parser s a) -> Parser s a
+lazy t = RecursiveParser (L.lazy (\() -> app (t ())))
 
 
 {-| Transform both the result and error message of a parser. -}
