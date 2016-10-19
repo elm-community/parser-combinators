@@ -209,6 +209,7 @@ bimap fok ferr p =
 
 -- State management
 -- ----------------
+
 {-| Get the parser's state and pipe it into a parser. -}
 withState : (s -> Parser s a) -> Parser s a
 withState f =
@@ -294,6 +295,7 @@ currentColumn = currentLocation >> .column
 
 -- Transformers
 -- ------------
+
 {-| Transform the result of a parser.
 
     let
@@ -428,6 +430,7 @@ sequence ps =
 
 -- Combinators
 -- -----------
+
 {-| Fail without consuming any input.
 
     parse (fail "some error") "hello"
@@ -630,7 +633,7 @@ optional res p =
   p <|> succeed res
 
 
-{-| Wrap the return value into a `Maybe`. Returns `Nothing` on failure.
+{-| Wrap the return value into a `Maybe`.  Returns `Nothing` on failure.
 
     parse (maybe (string "a")) "a"
     -- Ok (Just "a")
@@ -650,10 +653,13 @@ maybe p =
         (state, stream, Ok Nothing)
 
 
-{-| Apply a parser until it fails and return a list of the results.
+{-| Apply a parser zero or more times and return a list of the results.
 
     parse (many (string "a")) "aaab"
     -- Ok ["a", "a", "a"]
+
+    parse (many (string "a")) "bbbb"
+    -- Ok []
 
     parse (many (string "a")) ""
     -- Ok []
@@ -864,11 +870,12 @@ whitespace = regex "[ \t\r\n]*" <?> "whitespace"
 
 -- Infix operators
 -- ---------------
+
 {-| Variant of `Combine.mapError` that replaces the Parser's error
 with a List of a single string.
 
-    -- Err ["gimme an 'a'"]
     parse (string "a" <?> "gimme an 'a'") "b"
+    -- Err ["gimme an 'a'"]
 
 -}
 (<?>) : Parser s a -> String -> Parser s a

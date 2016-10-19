@@ -1,11 +1,11 @@
 module Combine.Char exposing ( .. )
 
-{-| This module contains `Char`-specific Parsers.  Avoid using this
-module if performance is a concern.
+{-| This module contains `Char`-specific Parsers.
 
-You can achieve everything that you can with this module by using
-`Combine.regex`, `Combine.string` or `Combine.primitive` and, in
-general, those will be much faster.
+Avoid using this module if performance is a concern. You can achieve
+everything that you can do with this module by using `Combine.regex`,
+`Combine.string` or `Combine.primitive` and, in general, those will be
+much faster.
 
 # Parsers
 @docs satisfy, char, anyChar, oneOf, noneOf, space, tab, newline, crlf, eol, lower, upper, digit, octDigit, hexDigit
@@ -19,10 +19,10 @@ import String
 {-| Parse a character matching the predicate.
 
     parse (satisfy ((==) 'a')) "a" ==
-      (Ok 'a', { input = "", position = 1 })
+    -- Ok 'a'
 
     parse (satisfy ((==) 'a')) "b" ==
-      (Err ["could not satisfy predicate"], { input = "b", position = 0 })
+    -- Err ["could not satisfy predicate"]
 
 -}
 satisfy : (Char -> Bool) -> Parser s Char
@@ -42,10 +42,10 @@ satisfy pred =
 {-| Parse an exact character match.
 
     parse (char 'a') "a" ==
-      (Ok 'a', { input = "", position = 1 })
+    -- Ok 'a'
 
     parse (char 'a') "b" ==
-      (Err ["expected 'a'"], { input = "b", position = 0 })
+    -- Err ["expected 'a'"]
 
 -}
 char : Char -> Parser s Char
@@ -55,10 +55,10 @@ char c = satisfy ((==) c) <?> ("expected " ++ (toString c))
 {-| Parse any character.
 
     parse anyChar "a" ==
-      (Ok 'a', { input = "", position = 1 })
+    -- Ok 'a'
 
     parse anyChar "" ==
-      (Err ["expected any character"], { input = "", position = 0 })
+    -- Err ["expected any character"]
 
 -}
 anyChar : Parser s Char
@@ -68,10 +68,10 @@ anyChar = satisfy (always True) <?> "expected any character"
 {-| Parse a character from the given list.
 
     parse (oneOf ['a', 'b']) "a" ==
-      (Ok 'a', { input = "", position = 1 })
+    -- Ok 'a'
 
     parse (oneOf ['a', 'b']) "c" ==
-      (Err ["expected one of ['a','b']"], { input = "c", position = 0 })
+    -- Err ["expected one of ['a','b']"]
 
 -}
 oneOf : List Char -> Parser s Char
@@ -81,10 +81,10 @@ oneOf cs = satisfy (flip List.member cs) <?> ("expected one of " ++ (toString cs
 {-| Parse a character that is not in the given list.
 
     parse (noneOf ['a', 'b']) "c" ==
-      (Ok 'c', { input = "", position = 1 })
+    -- Ok 'c'
 
     parse (noneOf ['a', 'b']) "a" ==
-      (Err ["expected none of ['a','b']"], { input = "a", position = 0 })
+    -- Err ["expected none of ['a','b']"]
 
 -}
 noneOf : List Char -> Parser s Char
