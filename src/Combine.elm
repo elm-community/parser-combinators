@@ -7,39 +7,52 @@ module Combine
     , withLocation, withLine, withColumn, currentLocation, currentSourceLine, currentLine, currentColumn
     , map, mapError
     , andThen, andMap, sequence
-    , fail, succeed, string, regex, while, end
-    , lookAhead, or, choice, optional, maybe, many, many1, manyTill
+    , fail, succeed, string, regex, end, whitespace
+    , lookAhead, while, or, choice, optional, maybe, many, many1, manyTill
     , sepBy, sepBy1, sepEndBy, sepEndBy1, skip, skipMany, skipMany1
-    , chainl, chainr, count, between, parens
-    , braces, brackets, whitespace
+    , chainl, chainr, count, between, parens, braces, brackets
     , (<?>), (>>=), (<$>), (<$), ($>), (<*>), (<*), (*>), (<|>)
     )
 
-{-| This library provides reasonably fast parser combinators.
+{-| This library provides facilities for parsing structured text data
+into concrete Elm values.
 
-# Types
+## API Reference
+
+* [Core Types](#core-types)
+* [Running Parsers](#running-parser)
+* [Parsers](#parsers)
+* [Combinators](#combinators)
+  * [Transforming Parsers](#transforming-parsers)
+  * [Chaining Parsers](#chaining-parsers)
+  * [Parser Combinators](#parser-combinators)
+  * [State Combinators](#state-combinators)
+
+## Core Types
 @docs Parser, InputStream, ParseLocation, ParseContext, ParseResult, ParseErr, ParseOk
+
+## Running Parsers
+@docs parse, runParser
 
 ## Constructing Parsers
 @docs primitive, lazy
 
-## Running a Parser
-@docs parse, runParser
-
-## Managing state
-@docs withState, putState, modifyState, withLocation, withLine, withColumn, currentLocation, currentSourceLine, currentLine, currentColumn
-
-## Transforming Parsers
-@docs map, mapError
-
-## Chaining Parsers
-@docs andThen, andMap, sequence
+## Parsers
+@docs fail, succeed, string, regex, end, whitespace
 
 ## Combinators
-@docs fail, succeed, string, regex, while, end, lookAhead, or, choice, optional, maybe, many, many1, manyTill, sepBy, sepBy1, sepEndBy, sepEndBy1, skip, skipMany, skipMany1, chainl, chainr, count, between, parens, braces, brackets, whitespace
 
-## Infix combinators
-@docs (<?>), (>>=), (<$>), (<$), ($>), (<*>), (<*), (*>), (<|>)
+### Transforming Parsers
+@docs map, (<$>), (<$), ($>), mapError, (<?>)
+
+### Chaining Parsers
+@docs andThen, (>>=), andMap, (<*>), (<*), (*>), sequence
+
+### Parser Combinators
+@docs lookAhead, while, or, (<|>), choice, optional, maybe, many, many1, manyTill, sepBy, sepBy1, sepEndBy, sepEndBy1, skip, skipMany, skipMany1, chainl, chainr, count, between, parens, braces, brackets
+
+### State Combinators
+@docs withState, putState, modifyState, withLocation, withLine, withColumn, currentLocation, currentSourceLine, currentLine, currentColumn
 -}
 
 import Lazy as L
@@ -51,7 +64,7 @@ import String
 
 * `data` is the initial input provided by the user
 * `input` is the remainder after running a parse
-* `position` is the absolute byte position of the parser after running a parse
+* `position` is the starting position of `input` in `data` after a parse
 
  -}
 type alias InputStream =
@@ -77,8 +90,9 @@ type alias ParseLocation =
   }
 
 
-{-| A triple representing the current parser state, the remaining
-input stream and the parse result. -}
+{-| A tuple representing the current parser state, the remaining input
+stream and the parse result.  Don't worry about this type unless
+you're writing your own `primitive` parsers. -}
 type alias ParseContext state res =
   (state, InputStream, ParseResult res)
 
@@ -113,7 +127,7 @@ type alias ParseFn state res =
 {-| The Parser type.
 
 At their core, `Parser`s wrap functions from some `state` and an
-`InputStream` to a tuple representing the some new `state`, the
+`InputStream` to a tuple representing the new `state`, the
 remaining `InputStream` and a `ParseResult res`.
 -}
 type Parser state res
@@ -226,9 +240,6 @@ function to avoid "bad-recursion" errors.
     type Expression
       = ETerm String
       | EList (List E)
-
-    whitespace : Parser s String
-    whitespace = regex "[ \t\r\n]*"
 
     name : Parser s String
     name = whitespace *> regex "[a-zA-Z]+" <* whitespace
@@ -436,26 +447,13 @@ andThen f p =
 
 {-| Sequence two parsers.
 
-    import Maybe
-    import Result
-    import String
-
-    toInt : String -> Int
-    toInt =
-      String.toInt
-        >> Result.toMaybe
-        >> Maybe.withDefault 0
-
-    num : Parser s Int
-    num =
-      regex "[0-9]+"
-        |> map toInt
+    import Combine.Num exposing (int)
 
     sum : Parser s Int
     sum =
-      (num <* string "+")
+      int
         |> map (+)
-        |> andMap num
+        |> andMap int
 
     parse sum "1+2"
     -- Ok 3
@@ -878,7 +876,8 @@ chainl op p =
 
 
 {-| Similar to `chainl` but functions of `op` are applied in
-right-associative order to the values of `p`. -}
+right-associative order to the values of `p`.  See the
+`examples/Python.elm` file for a usage example. -}
 chainr : Parser s (a -> a -> a) -> Parser s a -> Parser s a
 chainr op p =
   let
@@ -912,6 +911,7 @@ The parser
 is equivalent to the parser
 
     string "(" *> string "a" <* string ")"
+
 -}
 between : Parser s l -> Parser s r -> Parser s a -> Parser s a
 between lp rp p = lp *> p <* rp
@@ -932,7 +932,15 @@ brackets : Parser s a -> Parser s a
 brackets = between (string "[") (string "]")
 
 
-{-| Parse zero or more whitespace characters. -}
+{-| Parse zero or more whitespace characters.
+
+    parse (whitespace *> string "hello") "hello"
+    -- Ok "hello"
+
+    parse (whitespace *> string "hello") "   hello"
+    -- Ok "hello"
+
+-}
 whitespace : Parser s String
 whitespace = regex "[ \t\r\n]*" <?> "whitespace"
 
@@ -940,8 +948,8 @@ whitespace = regex "[ \t\r\n]*" <?> "whitespace"
 -- Infix operators
 -- ---------------
 
-{-| Variant of `Combine.mapError` that replaces the Parser's error
-with a List of a single string.
+{-| Variant of `mapError` that replaces the Parser's error with a List
+of a single string.
 
     parse (string "a" <?> "gimme an 'a'") "b"
     -- Err ["gimme an 'a'"]
@@ -951,27 +959,86 @@ with a List of a single string.
 (<?>) p m = mapError (always [m]) p
 
 
-{-| Flipped synonym for `andThen`. -}
+{-| Infix version of `andThen`.
+
+    import Combine.Num exposing (int)
+
+    choosy : Parser s String
+    choosy =
+      let
+        createParser n =
+          if n % 2 == 0 then
+            string " is even"
+          else
+            string " is odd"
+      in
+        int >>= createParser
+
+    parse choosy "1 is odd"
+    -- Ok " is odd"
+
+    parse choosy "2 is even"
+    -- Ok " is even"
+
+    parse choosy "1 is even"
+    -- Err ["expected \" is odd\""]
+
+-}
 (>>=) : Parser s a -> (a -> Parser s b) -> Parser s b
 (>>=) = flip andThen
 
 
-{-| Synonym for `map`. -}
+{-| Infix version of `map`.
+
+    parse (toString <$> int) "42"
+    -- Ok "42"
+
+    parse (toString <$> int) "abc"
+    -- Err ["expected an integer"]
+
+ -}
 (<$>) : (a -> b) -> Parser s a -> Parser s b
 (<$>) = map
 
 
-{-| Variant of `map` that ignores the Parser's result. -}
+{-| Run a parser and return the value on the left on success.
+
+    parse (True <$ string "true") "true"
+    -- Ok True
+
+    parse (True <$ string "true") "false"
+    -- Err ["expected \"true\""]
+
+-}
 (<$) : a -> Parser s x -> Parser s a
-(<$) res = map (\_ -> res)
+(<$) res = map (always res)
 
 
-{-| Variant of `map` that ignores the Parser's result. -}
+{-| Run a parser and return the value on the right on success.
+
+    parse (string "true" $> True) "true"
+    -- Ok True
+
+    parse (string "true" $> True) "false"
+    -- Err ["expected \"true\""]
+
+-}
 ($>) : Parser s x -> a -> Parser s a
 ($>) = flip (<$)
 
 
-{-| Flipped synonym for `andMap`. -}
+{-| Infix version of `andMap`.
+
+    add : Int -> Int -> Int
+    add = (+)
+
+    plus : Parser s String
+    plus = string "+"
+
+    parse (add <$> int <*> (plus *> int)) "1+1"
+    -- Ok 2
+
+ -}
 (<*>) : Parser s (a -> b) -> Parser s a -> Parser s b
 (<*>) = flip andMap
 
