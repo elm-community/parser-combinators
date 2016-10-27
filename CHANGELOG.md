@@ -7,6 +7,7 @@
 * The `Combine.Infix` module has been merged into `Combine`
 * The `Parser` type has changed from `Parser res` to `Parser state res`
 * The signature of `andThen` has changed to `(a -> Parser s b) -> Parser s a -> Parser s b`
+* The signature of `andMap` has changed to `Parser s a -> Parser s (a -> b) -> Parser s b`
 * The signature of `parse` has changed to `Parser () res -> String -> Result (ParseErr ()) (ParseOk () res)`
 * `rec` has been renamed to `lazy`
 * `app` has been removed, use `primitive`, `parse` or `runParser` instead
