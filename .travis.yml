@@ -2,7 +2,5 @@ language: node_js
 node_js:
   - "0.12"
 before_script:
-  - cd tests
-  - npm install -g elm
-  - elm-package install -y
-script: elm make Tests.elm --output tests.js && node tests.js
+  - npm install -g elm elm-test
+script: elm-test
