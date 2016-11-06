@@ -74,7 +74,7 @@ sepEndBy1Suite =
       [ test "sepEndBy1 1" <| \() ->
           Expect.equal
             (parse commaSep "a,a,a")
-            (Ok ((), { data = "a,a,a", input = "", position = 4 }, ["a", "a", "a"]))
+            (Ok ((), { data = "a,a,a", input = "", position = 5 }, ["a", "a", "a"]))
 
       , test "sepEndBy1 2" <| \() ->
           Expect.equal
@@ -104,7 +104,7 @@ sequenceSuite =
     , test "one parser" <| \() ->
         Expect.equal
           (parse (sequence [many <| string "a"]) "aaaab")
-          (Ok ((), { data = "aaaab", input = "b", position = 5 }, [["a", "a", "a", "a"]]))
+          (Ok ((), { data = "aaaab", input = "b", position = 4 }, [["a", "a", "a", "a"]]))
 
     , test "many parsers" <| \() ->
         Expect.equal
@@ -125,4 +125,5 @@ all =
     , manyTillSuite
     , sepEndBySuite
     , sepEndBy1Suite
+    , sequenceSuite
     ]
