@@ -1,5 +1,11 @@
 # elm-combine changelog
 
+## elm-combine 3.1.0 (2016-11-14)
+
+### Additions
+
+* Brought back `app`
+
 ## elm-combine 3.0.0 (2016-11-14)
 
 ### Breaking changes

@@ -1,7 +1,7 @@
 module Combine
   exposing
     ( Parser, InputStream, ParseLocation, ParseContext, ParseResult, ParseErr, ParseOk
-    , primitive, lazy
+    , primitive, app, lazy
     , parse, runParser
     , withState, putState, modifyState
     , withLocation, withLine, withColumn, currentLocation, currentSourceLine, currentLine, currentColumn
@@ -21,6 +21,7 @@ into concrete Elm values.
 
 * [Core Types](#core-types)
 * [Running Parsers](#running-parsers)
+* [Constructing Parsers](#constructing-parsers)
 * [Parsers](#parsers)
 * [Combinators](#combinators)
   * [Transforming Parsers](#transforming-parsers)
@@ -35,7 +36,7 @@ into concrete Elm values.
 @docs parse, runParser
 
 ## Constructing Parsers
-@docs primitive, lazy
+@docs primitive, app, lazy
 
 ## Parsers
 @docs fail, succeed, string, regex, end, whitespace
@@ -147,7 +148,34 @@ primitive : (state -> InputStream -> ParseContext state res) -> Parser state res
 primitive = Parser
 
 
-{-| Unwrap a parser so it can be applied to a context. -}
+{-| Unwrap a parser so it can be applied to a state and an input
+stream.  This function is useful if you want to construct your own
+parsers via `primitive`.  If you're using this outside of the context
+of `primitive` then you might be doing something wrong so try asking
+for help on the mailing list.
+
+Here's how you would implement a greedy version of `manyTill` using
+`primitive` and `app`:
+
+    manyTill : Parser s a -> Parser s x -> Parser s (List a)
+    manyTill p end =
+      let
+        accumulate acc state stream =
+          case app end state stream of
+            (rstate, rstream, Ok _) ->
+              (rstate, rstream, Ok (List.reverse acc))
+
+            _ ->
+              case app p state stream of
+                (rstate, rstream, Ok res) ->
+                  accumulate (res :: acc) rstate rstream
+
+                (estate, estream, Err ms) ->
+                  (estate, estream, Err ms)
+      in
+        primitive <| accumulate []
+
+-}
 app : Parser state res -> state -> InputStream -> ParseContext state res
 app p =
   case p of
