@@ -1,6 +1,6 @@
 # elm-combine changelog
 
-## elm-combine 3.0.0 (TBD)
+## elm-combine 3.0.0 (2016-11-14)
 
 ### Breaking changes
 
