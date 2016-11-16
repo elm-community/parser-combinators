@@ -1117,7 +1117,6 @@ of a single string.
 
 
 -- Fixities
-infix  0 <?>
 infixl 1 >>=
 infixr 1 <|>
 infixl 4 <$>
