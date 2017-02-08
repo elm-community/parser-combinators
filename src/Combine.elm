@@ -7,7 +7,7 @@ module Combine
     , withLocation, withLine, withColumn, currentLocation, currentSourceLine, currentLine, currentColumn
     , map, mapError
     , andThen, andMap, sequence
-    , fail, succeed, string, regex, end, whitespace
+    , fail, succeed, string, regex, end, whitespace, whitespace1
     , lookAhead, while, or, choice, optional, maybe, many, many1, manyTill
     , sepBy, sepBy1, sepEndBy, sepEndBy1, skip, skipMany, skipMany1
     , chainl, chainr, count, between, parens, braces, brackets
@@ -39,7 +39,7 @@ into concrete Elm values.
 @docs primitive, app, lazy
 
 ## Parsers
-@docs fail, succeed, string, regex, end, whitespace
+@docs fail, succeed, string, regex, end, whitespace, whitespace1
 
 ## Combinators
 
@@ -974,6 +974,18 @@ brackets = between (string "[") (string "]")
 -}
 whitespace : Parser s String
 whitespace = regex "[ \t\r\n]*" <?> "whitespace"
+
+{-| Parse one or more whitespace characters.
+
+    parse (whitespace1 *> string "hello") "hello"
+    -- Err ["whitespace"]
+
+    parse (whitespace1 *> string "hello") "   hello"
+    -- Ok "hello"
+
+-}
+whitespace1 : Parser s String
+whitespace1 = regex "[ \t\r\n]+" <?> "whitespace"
 
 
 -- Infix operators
