@@ -1,7 +1,7 @@
 {
     "version": "1.0.0",
-    "summary": "elm-combine's test suite",
-    "repository": "https://github.com/Bogdanp/elm-combine.git",
+    "summary": "parser-combinators test suite",
+    "repository": "https://github.com/elm-community/parser-combinators.git",
     "license": "BSD3",
     "source-directories": [
         ".",
