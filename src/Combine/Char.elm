@@ -1,4 +1,4 @@
-module Combine.Char exposing (..)
+module Combine.Char exposing (satisfy, char, anyChar, oneOf, noneOf, space, tab, newline, crlf, eol, lower, upper, digit, octDigit, hexDigit)
 
 {-| This module contains `Char`-specific Parsers.
 
@@ -12,7 +12,7 @@ much faster.
 -}
 
 import Char
-import Combine exposing (..)
+import Combine exposing (Parser, primitive, regex, (<?>), (<$), (<|>))
 import String
 
 

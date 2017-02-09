@@ -110,7 +110,7 @@ into concrete Elm values.
 -}
 
 import Lazy as L
-import Regex exposing (Regex(..))
+import Regex exposing (Regex)
 import String
 
 
@@ -238,8 +238,8 @@ Here's how you would implement a greedy version of `manyTill` using
 app : Parser state res -> state -> InputStream -> ParseContext state res
 app p =
     case p of
-        Parser p ->
-            p
+        Parser inner ->
+            inner
 
         RecursiveParser t ->
             L.force t
@@ -443,9 +443,6 @@ withColumn f =
 currentLocation : InputStream -> ParseLocation
 currentLocation stream =
     let
-        lines =
-            String.split "\n" stream.data
-
         find position currentLine lines =
             case lines of
                 [] ->
@@ -454,19 +451,19 @@ currentLocation stream =
                 [ line ] ->
                     ParseLocation line (currentLine + 1) position
 
-                line :: lines ->
+                line :: rest ->
                     let
                         length =
                             String.length line
                     in
                         if position >= length then
-                            find (position - length - 1) (currentLine + 1) lines
+                            find (position - length - 1) (currentLine + 1) rest
                         else if currentLine == 0 then
                             ParseLocation line 1 position
                         else
                             ParseLocation line currentLine (position - 1)
     in
-        find stream.position 0 lines
+        find stream.position 0 (String.split "\n" stream.data)
 
 
 {-| Get the current source line in the input stream.
@@ -602,24 +599,24 @@ want to use one of the other combinators instead.
 
 -}
 sequence : List (Parser s a) -> Parser s (List a)
-sequence ps =
+sequence parsers =
     let
         accumulate acc ps state stream =
             case ps of
                 [] ->
                     ( state, stream, Ok (List.reverse acc) )
 
-                p :: ps ->
-                    case app p state stream of
+                x :: xs ->
+                    case app x state stream of
                         ( rstate, rstream, Ok res ) ->
-                            accumulate (res :: acc) ps rstate rstream
+                            accumulate (res :: acc) xs rstate rstream
 
                         ( estate, estream, Err ms ) ->
                             ( estate, estream, Err ms )
     in
         Parser <|
             \state stream ->
-                accumulate [] ps state stream
+                accumulate [] parsers state stream
 
 
 
