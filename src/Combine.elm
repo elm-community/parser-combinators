@@ -200,7 +200,7 @@ If you find yourself reaching for this function often consider opening
 a [Github issue][issues] with the library to have your custom Parsers
 included in the standard distribution.
 
-[issues]: https://github.com/Bogdanp/elm-combine/issues
+[issues]: https://github.com/elm-community/parser-combinators/issues
 -}
 primitive : (state -> InputStream -> ParseContext state res) -> Parser state res
 primitive =
