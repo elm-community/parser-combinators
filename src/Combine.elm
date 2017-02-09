@@ -686,7 +686,7 @@ string s =
                 in
                     ( state, { stream | input = rem, position = pos }, Ok s )
             else
-                ( state, stream, Err [ "expected " ++ (toString s) ] )
+                ( state, stream, Err [ "expected " ++ toString s ] )
 
 
 {-| Parse a Regex match.

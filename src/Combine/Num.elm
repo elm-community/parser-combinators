@@ -25,7 +25,7 @@ unwrap f s =
             res
 
         Err m ->
-            Debug.crash ("impossible state in Combine.Num.unwrap: " ++ (toString m))
+            Debug.crash ("impossible state in Combine.Num.unwrap: " ++ toString m)
 
 
 toInt : String -> Int
