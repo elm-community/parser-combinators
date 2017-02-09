@@ -1,4 +1,4 @@
-module Combine.Char exposing ( .. )
+module Combine.Char exposing (..)
 
 {-| This module contains `Char`-specific Parsers.
 
@@ -27,16 +27,21 @@ import String
 -}
 satisfy : (Char -> Bool) -> Parser s Char
 satisfy pred =
-  primitive <| \state stream ->
-    let message = "could not satisfy predicate" in
-    case String.uncons stream.input of
-      Just (h, rest) ->
-        if pred h
-        then (state, { stream | input = rest, position = stream.position + 1 }, Ok h)
-        else (state, stream, Err [message])
+    primitive <|
+        \state stream ->
+            let
+                message =
+                    "could not satisfy predicate"
+            in
+                case String.uncons stream.input of
+                    Just ( h, rest ) ->
+                        if pred h then
+                            ( state, { stream | input = rest, position = stream.position + 1 }, Ok h )
+                        else
+                            ( state, stream, Err [ message ] )
 
-      Nothing ->
-        (state, stream, Err [message])
+                    Nothing ->
+                        ( state, stream, Err [ message ] )
 
 
 {-| Parse an exact character match.
@@ -49,7 +54,8 @@ satisfy pred =
 
 -}
 char : Char -> Parser s Char
-char c = satisfy ((==) c) <?> ("expected " ++ (toString c))
+char c =
+    satisfy ((==) c) <?> ("expected " ++ (toString c))
 
 
 {-| Parse any character.
@@ -62,7 +68,8 @@ char c = satisfy ((==) c) <?> ("expected " ++ (toString c))
 
 -}
 anyChar : Parser s Char
-anyChar = satisfy (always True) <?> "expected any character"
+anyChar =
+    satisfy (always True) <?> "expected any character"
 
 
 {-| Parse a character from the given list.
@@ -75,7 +82,8 @@ anyChar = satisfy (always True) <?> "expected any character"
 
 -}
 oneOf : List Char -> Parser s Char
-oneOf cs = satisfy (flip List.member cs) <?> ("expected one of " ++ (toString cs))
+oneOf cs =
+    satisfy (flip List.member cs) <?> ("expected one of " ++ (toString cs))
 
 
 {-| Parse a character that is not in the given list.
@@ -89,54 +97,74 @@ oneOf cs = satisfy (flip List.member cs) <?> ("expected one of " ++ (toString cs
 -}
 noneOf : List Char -> Parser s Char
 noneOf cs =
-  satisfy (not << flip List.member cs) <?> ("expected none of " ++ (toString cs))
+    satisfy (not << flip List.member cs) <?> ("expected none of " ++ (toString cs))
 
 
-{-| Parse a space character. -}
+{-| Parse a space character.
+-}
 space : Parser s Char
-space = satisfy ((==) ' ') <?> "expected space"
+space =
+    satisfy ((==) ' ') <?> "expected space"
 
 
-{-| Parse a `\t` character. -}
+{-| Parse a `\t` character.
+-}
 tab : Parser s Char
-tab = satisfy ((==) '\t') <?> "expected tab"
+tab =
+    satisfy ((==) '\t') <?> "expected tab"
 
 
-{-| Parse a `\n` character. -}
+{-| Parse a `\n` character.
+-}
 newline : Parser s Char
-newline = satisfy ((==) '\n') <?> "expected newline"
+newline =
+    satisfy ((==) '\n') <?> "expected newline"
 
 
-{-| Parse a `\r\n` sequence, returning a `\n` character. -}
+{-| Parse a `\r\n` sequence, returning a `\n` character.
+-}
 crlf : Parser s Char
-crlf = '\n' <$ regex "\r\n" <?> "expected crlf"
+crlf =
+    '\n' <$ regex "\x0D\n" <?> "expected crlf"
 
 
-{-| Parse an end of line character or sequence, returning a `\n` character. -}
+{-| Parse an end of line character or sequence, returning a `\n` character.
+-}
 eol : Parser s Char
-eol = newline <|> crlf
+eol =
+    newline <|> crlf
 
 
-{-| Parse any lowercase character. -}
+{-| Parse any lowercase character.
+-}
 lower : Parser s Char
-lower = satisfy Char.isLower <?> "expected a lowercase character"
+lower =
+    satisfy Char.isLower <?> "expected a lowercase character"
 
 
-{-| Parse any uppercase character. -}
+{-| Parse any uppercase character.
+-}
 upper : Parser s Char
-upper = satisfy Char.isUpper <?> "expected an uppercase character"
+upper =
+    satisfy Char.isUpper <?> "expected an uppercase character"
 
 
-{-| Parse any base 10 digit. -}
+{-| Parse any base 10 digit.
+-}
 digit : Parser s Char
-digit = satisfy Char.isDigit <?> "expected a digit"
+digit =
+    satisfy Char.isDigit <?> "expected a digit"
 
 
-{-| Parse any base 8 digit. -}
+{-| Parse any base 8 digit.
+-}
 octDigit : Parser s Char
-octDigit = satisfy Char.isOctDigit <?> "expected an octal digit"
+octDigit =
+    satisfy Char.isOctDigit <?> "expected an octal digit"
 
 
-{-| Parse any base 16 digit. -}
+{-| Parse any base 16 digit.
+-}
 hexDigit : Parser s Char
-hexDigit = satisfy Char.isHexDigit <?> "expected a hexadecimal digit"
+hexDigit =
+    satisfy Char.isHexDigit <?> "expected a hexadecimal digit"
