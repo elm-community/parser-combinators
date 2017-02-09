@@ -1,4 +1,4 @@
-# elm-combine
+# parser-combinators
 
 [![Build Status](https://travis-ci.org/elm-community/parser-combinators.svg)](https://travis-ci.org/elm-community/parser-combinators)
 

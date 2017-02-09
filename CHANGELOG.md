@@ -1,5 +1,16 @@
-# elm-combine changelog
+# Changelog
 
+
+## Version 1.0.0 (2017-02-09)
+
+* Transfer from `Bogdanp/elm-combine`.
+
+---
+
+> This repository is transferred from [Bogdanp/elm-combine](github.com/Bogdanp/elm-combine). The following changelog statements originate from that repository.
+
+
+---
 ## elm-combine 3.1.0 (2016-11-14)
 
 ### Additions
