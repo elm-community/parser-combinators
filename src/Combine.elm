@@ -33,6 +33,7 @@ module Combine
         , regex
         , end
         , whitespace
+        , whitespace1
         , lookAhead
         , while
         , or
@@ -92,7 +93,7 @@ into concrete Elm values.
 @docs primitive, app, lazy
 
 ## Parsers
-@docs fail, succeed, string, regex, end, whitespace
+@docs fail, succeed, string, regex, end, whitespace, whitespace1
 
 ## Combinators
 
@@ -1128,6 +1129,20 @@ brackets =
 whitespace : Parser s String
 whitespace =
     regex "[ \t\x0D\n]*" <?> "whitespace"
+
+
+{-| Parse one or more whitespace characters.
+
+    parse (whitespace1 *> string "hello") "hello"
+     -- Err ["whitespace"]
+
+    parse (whitespace1 *> string "hello") "   hello"
+     -- Ok "hello"
+
+-}
+whitespace1 : Parser s String
+whitespace1 =
+    regex "[ \t\x0D\n]+" <?> "whitespace"
 
 
 
