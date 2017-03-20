@@ -381,7 +381,7 @@ assignop =
 
 assignStmt : Parser s Statement
 assignStmt =
-    SAssign <$> (chainr assignop expr)
+    SAssign <$> chainr assignop expr
 
 
 indentation : Parser Indentation res -> Parser Indentation res

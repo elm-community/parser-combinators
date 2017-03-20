@@ -1,4 +1,4 @@
-module Combine.Char exposing (..)
+module Combine.Char exposing (satisfy, char, anyChar, oneOf, noneOf, space, tab, newline, crlf, eol, lower, upper, digit, octDigit, hexDigit)
 
 {-| This module contains `Char`-specific Parsers.
 
@@ -12,7 +12,7 @@ much faster.
 -}
 
 import Char
-import Combine exposing (..)
+import Combine exposing (Parser, primitive, regex, (<?>), (<$), (<|>))
 import String
 
 
@@ -55,7 +55,7 @@ satisfy pred =
 -}
 char : Char -> Parser s Char
 char c =
-    satisfy ((==) c) <?> ("expected " ++ (toString c))
+    satisfy ((==) c) <?> ("expected " ++ toString c)
 
 
 {-| Parse any character.
@@ -83,7 +83,7 @@ anyChar =
 -}
 oneOf : List Char -> Parser s Char
 oneOf cs =
-    satisfy (flip List.member cs) <?> ("expected one of " ++ (toString cs))
+    satisfy (flip List.member cs) <?> ("expected one of " ++ toString cs)
 
 
 {-| Parse a character that is not in the given list.
@@ -97,7 +97,7 @@ oneOf cs =
 -}
 noneOf : List Char -> Parser s Char
 noneOf cs =
-    satisfy (not << flip List.member cs) <?> ("expected none of " ++ (toString cs))
+    satisfy (not << flip List.member cs) <?> ("expected none of " ++ toString cs)
 
 
 {-| Parse a space character.
