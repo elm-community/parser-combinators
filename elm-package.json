@@ -1,5 +1,5 @@
 {
-    "version": "1.0.0",
+    "version": "1.1.0",
     "summary": "A parser combinator library",
     "repository": "https://github.com/elm-community/parser-combinators.git",
     "license": "BSD3",
