@@ -925,8 +925,8 @@ many1 p =
     (::) <$> p <*> many p
 
 
-{-| Apply parser `p` zero or more times until parser `end`
-succeeds. On success, the list of `p`'s results is returned.
+{-| Apply the first parser zero or more times until second parser
+succeeds. On success, the list of the first parser's results is returned.
 
     string "<!--" *> manyTill anyChar (string "-->")
 
