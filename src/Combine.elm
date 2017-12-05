@@ -5,7 +5,7 @@ module Combine
         , ParseLocation
         , ParseContext
         , ParseResult
-        , ParseErr
+        , ParseError
         , ParseOk
         , primitive
         , app
@@ -87,7 +87,7 @@ into concrete Elm values.
 
 ## Core Types
 
-@docs Parser, InputStream, ParseLocation, ParseContext, ParseResult, ParseErr, ParseOk
+@docs Parser, InputStream, ParseLocation, ParseContext, ParseResult, ParseError, ParseOk
 
 
 ## Running Parsers
@@ -189,7 +189,7 @@ type alias ParseResult res =
 running the parser, the remaining input stream and a list of
 error messages.
 -}
-type alias ParseErr state =
+type alias ParseError state =
     ( state, InputStream, List String )
 
 
@@ -291,7 +291,7 @@ some internal state.
     -- Err "expected an integer"
 
 -}
-parse : Parser () res -> String -> Result (ParseErr ()) (ParseOk () res)
+parse : Parser () res -> String -> Result (ParseError ()) (ParseOk () res)
 parse p =
     runParser p ()
 
@@ -336,7 +336,7 @@ parse p =
     -- Ok { count = 1, integers = [1] }
 
 -}
-runParser : Parser state res -> state -> String -> Result (ParseErr state) (ParseOk state res)
+runParser : Parser state res -> state -> String -> Result (ParseError state) (ParseOk state res)
 runParser p st s =
     case app p st (initStream s) of
         ( state, stream, Ok res ) ->
