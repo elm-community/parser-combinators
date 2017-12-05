@@ -1,5 +1,11 @@
 # Changelog
 
+## Version 2.0.0 (2017-12-05)
+
+No API change, but a major change. The internal implementation how locations (line/columns) are working has changed.
+Lines were previously 1-based, and columns sometimes had negative values. This is changed into zero-based lines and columns can never have negative values anymore.
+
+If your application/library did not rely on parse locations, the update is seamless. 
 
 ## Version 1.0.0 (2017-02-09)
 

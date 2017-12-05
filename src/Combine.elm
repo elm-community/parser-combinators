@@ -71,43 +71,62 @@ module Combine
 {-| This library provides facilities for parsing structured text data
 into concrete Elm values.
 
+
 ## API Reference
 
-* [Core Types](#core-types)
-* [Running Parsers](#running-parsers)
-* [Constructing Parsers](#constructing-parsers)
-* [Parsers](#parsers)
-* [Combinators](#combinators)
-  * [Transforming Parsers](#transforming-parsers)
-  * [Chaining Parsers](#chaining-parsers)
-  * [Parser Combinators](#parser-combinators)
-  * [State Combinators](#state-combinators)
+  - [Core Types](#core-types)
+  - [Running Parsers](#running-parsers)
+  - [Constructing Parsers](#constructing-parsers)
+  - [Parsers](#parsers)
+  - [Combinators](#combinators)
+      - [Transforming Parsers](#transforming-parsers)
+      - [Chaining Parsers](#chaining-parsers)
+      - [Parser Combinators](#parser-combinators)
+      - [State Combinators](#state-combinators)
+
 
 ## Core Types
+
 @docs Parser, InputStream, ParseLocation, ParseContext, ParseResult, ParseErr, ParseOk
 
+
 ## Running Parsers
+
 @docs parse, runParser
 
+
 ## Constructing Parsers
+
 @docs primitive, app, lazy
 
+
 ## Parsers
+
 @docs fail, succeed, string, regex, end, whitespace, whitespace1
+
 
 ## Combinators
 
+
 ### Transforming Parsers
+
 @docs map, (<$>), (<$), ($>), mapError, (<?>)
 
+
 ### Chaining Parsers
+
 @docs andThen, (>>=), andMap, (<*>), (<*), (*>), sequence
 
+
 ### Parser Combinators
+
 @docs lookAhead, while, or, (<|>), choice, optional, maybe, many, many1, manyTill, sepBy, sepBy1, sepEndBy, sepEndBy1, skip, skipMany, skipMany1, chainl, chainr, count, between, parens, braces, brackets
 
+
 ### State Combinators
+
 @docs withState, putState, modifyState, withLocation, withLine, withColumn, currentLocation, currentSourceLine, currentLine, currentColumn
+
 -}
 
 import Lazy as L
@@ -117,9 +136,9 @@ import String
 
 {-| The input stream over which `Parser`s operate.
 
-* `data` is the initial input provided by the user
-* `input` is the remainder after running a parse
-* `position` is the starting position of `input` in `data` after a parse
+  - `data` is the initial input provided by the user
+  - `input` is the remainder after running a parse
+  - `position` is the starting position of `input` in `data` after a parse
 
 -}
 type alias InputStream =
@@ -136,9 +155,10 @@ initStream s =
 
 {-| A record representing the current parse location in an InputStream.
 
-* `source` the current line of source code
-* `line` the current line number (starting at 1)
-* `column` the current column (starting at 1)
+  - `source` the current line of source code
+  - `line` the current line number (starting at 1)
+  - `column` the current column (starting at 1)
+
 -}
 type alias ParseLocation =
     { source : String
@@ -148,7 +168,7 @@ type alias ParseLocation =
 
 
 {-| A tuple representing the current parser state, the remaining input
-stream and the parse result.  Don't worry about this type unless
+stream and the parse result. Don't worry about this type unless
 you're writing your own `primitive` parsers.
 -}
 type alias ParseContext state res =
@@ -157,14 +177,15 @@ type alias ParseContext state res =
 
 {-| Running a `Parser` results in one of two states:
 
-* `Ok res` when the parser has successfully parsed the input
-* `Err messages` when the parser has failed with a list of error messages.
+  - `Ok res` when the parser has successfully parsed the input
+  - `Err messages` when the parser has failed with a list of error messages.
+
 -}
 type alias ParseResult res =
     Result (List String) res
 
 
-{-| A tuple representing a failed parse.  It contains the state after
+{-| A tuple representing a failed parse. It contains the state after
 running the parser, the remaining input stream and a list of
 error messages.
 -}
@@ -172,7 +193,7 @@ type alias ParseErr state =
     ( state, InputStream, List String )
 
 
-{-| A tuple representing a successful parse.  It contains the state
+{-| A tuple representing a successful parse. It contains the state
 after running the parser, the remaining input stream and the
 result.
 -}
@@ -189,6 +210,7 @@ type alias ParseFn state res =
 At their core, `Parser`s wrap functions from some `state` and an
 `InputStream` to a tuple representing the new `state`, the
 remaining `InputStream` and a `ParseResult res`.
+
 -}
 type Parser state res
     = Parser (ParseFn state res)
@@ -202,6 +224,7 @@ a [Github issue][issues] with the library to have your custom Parsers
 included in the standard distribution.
 
 [issues]: https://github.com/elm-community/parser-combinators/issues
+
 -}
 primitive : (state -> InputStream -> ParseContext state res) -> Parser state res
 primitive =
@@ -209,8 +232,8 @@ primitive =
 
 
 {-| Unwrap a parser so it can be applied to a state and an input
-stream.  This function is useful if you want to construct your own
-parsers via `primitive`.  If you're using this outside of the context
+stream. This function is useful if you want to construct your own
+parsers via `primitive`. If you're using this outside of the context
 of `primitive` then you might be doing something wrong so try asking
 for help on the mailing list.
 
@@ -219,21 +242,21 @@ Here's how you would implement a greedy version of `manyTill` using
 
     manyTill : Parser s a -> Parser s x -> Parser s (List a)
     manyTill p end =
-      let
-        accumulate acc state stream =
-          case app end state stream of
-            (rstate, rstream, Ok _) ->
-              (rstate, rstream, Ok (List.reverse acc))
+        let
+            accumulate acc state stream =
+                case app end state stream of
+                    ( rstate, rstream, Ok _ ) ->
+                        ( rstate, rstream, Ok (List.reverse acc) )
 
-            _ ->
-              case app p state stream of
-                (rstate, rstream, Ok res) ->
-                  accumulate (res :: acc) rstate rstream
+                    _ ->
+                        case app p state stream of
+                            ( rstate, rstream, Ok res ) ->
+                                accumulate (res :: acc) rstate rstream
 
-                (estate, estream, Err ms) ->
-                  (estate, estream, Err ms)
-      in
-        primitive <| accumulate []
+                            ( estate, estream, Err ms ) ->
+                                ( estate, estream, Err ms )
+        in
+            primitive <| accumulate []
 
 -}
 app : Parser state res -> state -> InputStream -> ParseContext state res
@@ -246,7 +269,7 @@ app p =
             L.force t
 
 
-{-| Parse a string.  See `runParser` if your parser needs to manage
+{-| Parse a string. See `runParser` if your parser needs to manage
 some internal state.
 
     import Combine.Num exposing (int)
@@ -323,7 +346,7 @@ runParser p st s =
             Err ( state, stream, ms )
 
 
-{-| Defer running a parser until it's actually required.  Use this
+{-| Defer running a parser until it's actually required. Use this
 function to avoid "bad-recursion" errors.
 
     type Expression
@@ -447,22 +470,22 @@ currentLocation stream =
         find position currentLine lines =
             case lines of
                 [] ->
-                    ParseLocation "" 1 position
-
-                [ line ] ->
-                    ParseLocation line (currentLine + 1) position
+                    ParseLocation "" currentLine position
 
                 line :: rest ->
                     let
                         length =
                             String.length line
+
+                        lengthPlusNL =
+                            length + 1
                     in
-                        if position >= length then
-                            find (position - length - 1) (currentLine + 1) rest
-                        else if currentLine == 0 then
-                            ParseLocation line 1 position
+                        if position == length then
+                            ParseLocation line currentLine position
+                        else if position > length then
+                            find (position - lengthPlusNL) (currentLine + 1) rest
                         else
-                            ParseLocation line currentLine (position - 1)
+                            ParseLocation line currentLine position
     in
         find stream.position 0 (String.split "\n" stream.data)
 
@@ -587,9 +610,9 @@ andMap rp lp =
     lp >>= flip map rp
 
 
-{-| Run a list of parsers in sequence, accumulating the results.  The
+{-| Run a list of parsers in sequence, accumulating the results. The
 main use case for this parser is when you want to combine a list of
-parsers into a single, top-level, parser.  For most use cases, you'll
+parsers into a single, top-level, parser. For most use cases, you'll
 want to use one of the other combinators instead.
 
     parse (sequence [string "a", string "b"]) "ab"
@@ -855,7 +878,7 @@ optional res p =
     p <|> succeed res
 
 
-{-| Wrap the return value into a `Maybe`.  Returns `Nothing` on failure.
+{-| Wrap the return value into a `Maybe`. Returns `Nothing` on failure.
 
     parse (maybe (string "a")) "a"
     -- Ok (Just "a")
@@ -1046,7 +1069,7 @@ chainl op p =
 
 
 {-| Similar to `chainl` but functions of `op` are applied in
-right-associative order to the values of `p`.  See the
+right-associative order to the values of `p`. See the
 `examples/Python.elm` file for a usage example.
 -}
 chainr : Parser s (a -> a -> a) -> Parser s a -> Parser s a
