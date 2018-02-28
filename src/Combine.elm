@@ -22,6 +22,7 @@ module Combine
         , currentSourceLine
         , currentLine
         , currentColumn
+        , modifyStream
         , map
         , mapError
         , andThen
@@ -510,6 +511,14 @@ currentColumn : InputStream -> Int
 currentColumn =
     currentLocation >> .column
 
+
+{-| Modify the parser's InputStream.
+-}
+modifyStream : (String -> String) -> Parser s ()
+modifyStream f =
+    Parser <|
+        \state stream ->
+            app (succeed ()) state { stream | input = f stream.input }
 
 
 -- Transformers
