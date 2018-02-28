@@ -126,7 +126,7 @@ into concrete Elm values.
 
 ### State Combinators
 
-@docs withState, putState, modifyState, withLocation, withLine, withColumn, currentLocation, currentSourceLine, currentLine, currentColumn
+@docs withState, putState, modifyState, withLocation, withLine, withColumn, currentLocation, currentSourceLine, currentLine, currentColumn, modifyStream
 
 -}
 

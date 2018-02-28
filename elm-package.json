@@ -1,5 +1,5 @@
 {
-    "version": "2.0.0",
+    "version": "1.0.0",
     "summary": "A fork of the elm-community/parser-combinator, with function modifyStream.",
     "repository": "https://github.com/andre-dietrich/parser-combinators.git",
     "license": "BSD3",
