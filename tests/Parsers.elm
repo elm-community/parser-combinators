@@ -1,8 +1,9 @@
-module Parsers exposing (..)
+module Parsers exposing (calcSuite, manyTillSuite, sepEndBy1Suite, sepEndBySuite, sequenceSuite, streamModification, successful)
 
 import Calc exposing (calc)
 import Combine exposing (..)
 import Combine.Char exposing (..)
+import Combine.Num exposing (int)
 import Expect
 import String
 import Test exposing (Test, describe, test)
@@ -123,4 +124,43 @@ sequenceSuite =
                 Expect.equal
                     (parse (sequence [ string "a", string "b", string "c" ]) "abd")
                     (Err ( (), { data = "abd", input = "d", position = 2 }, [ "expected \"c\"" ] ))
+        ]
+
+
+streamModification : Test
+streamModification =
+    describe "stream modification tests"
+        [ test "simple injection" <|
+            \() ->
+                Expect.equal
+                    (parse
+                        (sequence
+                            [ string "a"
+                            , string "b"
+                            , string "c"
+                            , modifyStream ((++) "def") *> string "d"
+                            , string "e"
+                            , string "f"
+                            ]
+                        )
+                        "abc"
+                    )
+                    (Ok ( (), { data = "abc", input = "", position = 6 }, [ "a", "b", "c", "d", "e", "f" ] ))
+        , test "statefull injection" <|
+            \() ->
+                Expect.equal
+                    (parse
+                        (sequence
+                            [ string "a"
+                            , (int >>= (\i -> modifyStream ((++) (String.repeat i "X")))) *> string "X"
+                            , string "X"
+                            , string "X"
+                            , string "X"
+                            , string "X"
+                            , string "b"
+                            ]
+                        )
+                        "a5b"
+                    )
+                    (Ok ( (), { data = "a5b", input = "", position = 8 }, [ "a", "X", "X", "X", "X", "X", "b" ] ))
         ]
