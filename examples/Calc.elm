@@ -3,6 +3,7 @@ module Calc exposing (calc)
 {-| An example parser that computes arithmetic expressions.
 
 @docs calc
+
 -}
 
 import Combine exposing (..)
@@ -12,16 +13,16 @@ import Combine.Num exposing (int)
 addop : Parser s (Int -> Int -> Int)
 addop =
     choice
-        [ (+) <$ string "+"
-        , (-) <$ string "-"
+        [ string "+" |> onsuccess (+)
+        , string "-" |> onsuccess (-)
         ]
 
 
 mulop : Parser s (Int -> Int -> Int)
 mulop =
     choice
-        [ (*) <$ string "*"
-        , (//) <$ string "/"
+        [ string "*" |> onsuccess (*)
+        , string "/" |> onsuccess (//)
         ]
 
 
@@ -31,7 +32,7 @@ expr =
         go () =
             chainl addop term
     in
-        lazy go
+    lazy go
 
 
 term : Parser s Int
@@ -40,19 +41,21 @@ term =
         go () =
             chainl mulop factor
     in
-        lazy go
+    lazy go
 
 
 factor : Parser s Int
 factor =
-    whitespace *> (parens expr <|> int) <* whitespace
+    whitespace
+        |> keep (or (parens expr) int)
+        |> ignore whitespace
 
 
 {-| Compute the result of an expression.
 -}
 calc : String -> Result String Int
 calc s =
-    case parse (expr <* end) s of
+    case parse (expr |> ignore end) s of
         Ok ( _, _, n ) ->
             Ok n
 
