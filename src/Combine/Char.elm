@@ -129,7 +129,7 @@ newline =
 -}
 crlf : Parser s Char
 crlf =
-    regex "\\r\\n" |> onsuccess '\n' |> onerror "expected crlf"
+    string "\r\n" |> onsuccess '\n' |> onerror "expected crlf"
 
 
 {-| Parse an end of line character or sequence, returning a `\n` character.

@@ -63,7 +63,7 @@ digit =
 int : Parser s Int
 int =
     map (*) sign
-        |> andMap (regex "(0|[1-9][0-9]*)" |> map toInt)
+        |> andMap (regex "(?:0|[1-9]\\d*)" |> map toInt)
         |> onerror "expected an integer"
 
 
@@ -72,5 +72,5 @@ int =
 float : Parser s Float
 float =
     map ((*) << Basics.toFloat) sign
-        |> andMap (regex "(0|[1-9][0-9]*)(\\.[0-9]+)" |> map toFloat)
+        |> andMap (regex "(?:0|[1-9]\\d*)\\.\\d+" |> map toFloat)
         |> onerror "expected a float"
