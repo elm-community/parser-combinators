@@ -1,4 +1,4 @@
-module Python exposing (..)
+module Python exposing (CompoundStatement(..), Expression(..), Indentation, Statement(..), addop, andExpr, andop, app, arithExpr, assertStmt, assignStmt, assignop, atom, attribute, block, blockStmt, bool, breakStmt, cmpExpr, cmpop, commaSep, comment, compoundStmt, continueStmt, dedent, delStmt, dict, dictSep, dropWhile, expr, exprList, exprStmt, factor, float, forStmt, formatError, funcStmt, globalStmt, identifier, importAs, importFromStmt, importStmt, indent, indentation, initIndentation, int, keyword, list, listSep, mulop, notExpr, orop, parse, passStmt, printStmt, program, raiseStmt, returnStmt, set, simpleStmt, spaces, stmt, str, term, test, token, tuple, whileStmt, whitespace, withStmt)
 
 import Combine exposing (..)
 import Combine.Char exposing (..)
@@ -71,6 +71,7 @@ dropWhile p xs =
         x :: ys ->
             if p x then
                 dropWhile p ys
+
             else
                 xs
 
@@ -87,7 +88,7 @@ spaces =
 
 whitespace : Parser s String
 whitespace =
-    comment <|> spaces <?> "whitespace"
+    or comment spaces |> onerror "whitespace"
 
 
 token : Parser s res -> Parser s res
@@ -97,63 +98,66 @@ token =
 
 keyword : String -> Parser s String
 keyword s =
-    string s <* spaces
+    string s |> ignore spaces
 
 
 bool : Parser s Expression
 bool =
-    EBool
-        <$> choice
-                [ False <$ string "False"
-                , True <$ string "True"
-                ]
-        <?> "boolean"
+    or (string "False" |> onsuccess False) (string "True" |> onsuccess True)
+        |> map EBool
+        |> onerror "boolean"
 
 
 int : Parser s Expression
 int =
-    EInt <$> Combine.Num.int <?> "integer"
+    map EInt Combine.Num.int |> onerror "integer"
 
 
 float : Parser s Expression
 float =
-    EFloat <$> Combine.Num.float <?> "float"
+    map EFloat Combine.Num.float |> onerror "float"
 
 
 str : Parser s Expression
 str =
-    EString
-        <$> choice
-                [ string "'" *> regex "(\\\\'|[^'\n])*" <* string "'"
-                , string "\"" *> regex "(\\\\\"|[^\"\n])*" <* string "\""
-                ]
-        <?> "string"
+    or
+        (string "'"
+            |> keep (regex "(\\\\'|[^'\n])*")
+            |> ignore (string "'")
+        )
+        (string "\""
+            |> keep (regex "(\\\\\"|[^\"\n])*")
+            |> ignore (string "\"")
+        )
+        |> map EString
+        |> onerror "string"
 
 
 identifier : Parser s Expression
 identifier =
-    EIdentifier <$> regex "[_a-zA-Z][_a-zA-Z0-9]*" <?> "identifier"
+    regex "[_a-zA-Z][_a-zA-Z0-9]*"
+        |> map EIdentifier
+        |> onerror "identifier"
 
 
 attribute : Parser s Expression
 attribute =
     lazy <|
         \() ->
-            EAttribute
-                <$> identifier
-                <* string "."
-                <*> choice [ attribute, identifier ]
-                <?> "attribute"
+            map EAttribute identifier
+                |> ignore (string ".")
+                |> andMap (or attribute identifier)
+                |> onerror "attribute"
 
 
 app : Parser s Expression
 app =
     lazy <|
         \() ->
-            EApp
-                <$> choice [ attribute, identifier ]
-                <*> parens exprList
-                <?> "function call"
+            or attribute identifier
+                |> map EApp
+                |> andMap (parens exprList)
+                |> onerror "function call"
 
 
 commaSep : Parser s String
@@ -163,48 +167,55 @@ commaSep =
 
 dictSep : Parser s String
 dictSep =
-    regex ":[ \t\x0D\n]*"
+    regex ":[ \t\n]*"
 
 
 listSep : Parser s String
 listSep =
-    regex ",[ \t\x0D\n]*"
+    regex ",[ \t\n]*"
 
 
 list : Parser s Expression
 list =
     lazy <|
         \() ->
-            EList
-                <$> brackets (sepBy listSep expr)
-                <?> "list"
+            brackets (sepBy listSep expr)
+                |> map EList
+                |> onerror "error list"
 
 
 tuple : Parser s Expression
 tuple =
     lazy <|
         \() ->
-            ETuple
-                <$> parens (sepBy listSep expr)
-                <?> "tuple"
+            sepBy listSep expr
+                |> parens
+                |> map ETuple
+                |> onerror "tuple"
 
 
 dict : Parser s Expression
 dict =
     lazy <|
         \() ->
-            EDict
-                <$> brackets (sepBy listSep ((,) <$> expr <* dictSep <*> expr))
-                <?> "dictionary"
+            expr
+                |> ignore dictSep
+                |> map (,)
+                |> andMap expr
+                |> sepBy listSep
+                |> brackets
+                |> map EDict
+                |> onerror "dictionary"
 
 
 set : Parser s Expression
 set =
     lazy <|
         \() ->
-            ESet
-                <$> brackets (sepBy listSep expr)
-                <?> "set"
+            sepBy listSep expr
+                |> brackets
+                |> map ESet
+                |> onerror "set"
 
 
 atom : Parser s Expression
@@ -228,7 +239,7 @@ notExpr : Parser s Expression
 notExpr =
     lazy <|
         \() ->
-            (token <| ENot <$> (string "not" *> notExpr)) <|> cmpExpr
+            or (string "not" |> keep notExpr |> map ENot |> token) cmpExpr
 
 
 cmpExpr : Parser s Expression
@@ -248,50 +259,48 @@ term =
 
 factor : Parser s Expression
 factor =
-    lazy (\() -> token (parens expr <|> app <|> atom))
+    lazy (\() -> token (choice [ parens expr, app, atom ]))
 
 
 orop : Parser s (Expression -> Expression -> Expression)
 orop =
-    EOr <$ string "or"
+    string "or" |> onsuccess EOr
 
 
 andop : Parser s (Expression -> Expression -> Expression)
 andop =
-    EAnd <$ string "and"
+    string "and" |> onsuccess EAnd
 
 
 cmpop : Parser s (Expression -> Expression -> Expression)
 cmpop =
-    ECmp
-        <$> choice
-                [ string "<"
-                , string ">"
-                , string "=="
-                , string "!="
-                , string ">="
-                , string "<="
-                , string "in"
-                , (++) <$> keyword "not" <*> string "in"
-                , string "is"
-                , (++) <$> keyword "is" <*> string "not"
-                ]
+    [ string "<"
+    , string ">"
+    , string "=="
+    , string "!="
+    , string ">="
+    , string "<="
+    , string "in"
+    , keyword "not" |> map (++) |> andMap (string "in")
+    , string "is"
+    , keyword "is" |> map (++) |> andMap (string "not")
+    ]
+        |> choice
+        |> map ECmp
 
 
 addop : Parser s (Expression -> Expression -> Expression)
 addop =
-    choice
-        [ EAdd <$ string "+"
-        , ESub <$ string "-"
-        ]
+    or
+        (string "+" |> onsuccess EAdd)
+        (string "-" |> onsuccess ESub)
 
 
 mulop : Parser s (Expression -> Expression -> Expression)
 mulop =
-    choice
-        [ EMul <$ string "*"
-        , EDiv <$ string "/"
-        ]
+    or
+        (string "*" |> onsuccess EMul)
+        (string "/" |> onsuccess EDiv)
 
 
 exprList : Parser s (List Expression)
@@ -301,87 +310,112 @@ exprList =
 
 exprStmt : Parser s Statement
 exprStmt =
-    SExpr <$> expr <?> "expression"
+    map SExpr expr |> onerror "expression"
 
 
 printStmt : Parser s Statement
 printStmt =
-    SPrint <$> (keyword "print" *> exprList) <?> "print statement"
+    keyword "print"
+        |> keep exprList
+        |> map SPrint
+        |> onerror "print statement"
 
 
 delStmt : Parser s Statement
 delStmt =
-    SDel <$> (keyword "del" *> exprList) <?> "del statement"
+    keyword "del"
+        |> keep exprList
+        |> map SDel
+        |> onerror "del statement"
 
 
 passStmt : Parser s Statement
 passStmt =
-    SPass <$ keyword "pass" <?> "pass statement"
+    keyword "pass"
+        |> onsuccess SPass
+        |> onerror "pass statement"
 
 
 breakStmt : Parser s Statement
 breakStmt =
-    SBreak <$ keyword "break" <?> "break statement"
+    keyword "break"
+        |> onsuccess SBreak
+        |> onerror "break statement"
 
 
 continueStmt : Parser s Statement
 continueStmt =
-    SContinue <$ keyword "continue" <?> "continue statement"
+    keyword "continue"
+        |> onsuccess SContinue
+        |> onerror "continue statement"
 
 
 returnStmt : Parser s Statement
 returnStmt =
-    SReturn <$> (keyword "return" *> maybe expr) <?> "return statement"
+    keyword "return"
+        |> keep (maybe expr)
+        |> map SReturn
+        |> onerror "return statement"
 
 
 raiseStmt : Parser s Statement
 raiseStmt =
-    SRaise <$> (keyword "raise" *> maybe exprList) <?> "raise statement"
+    keyword "raise"
+        |> keep (maybe exprList)
+        |> map SRaise
+        |> onerror "raise statement"
 
 
 importAs : Parser s (List ( Expression, Maybe Expression ))
 importAs =
-    sepBy commaSep <|
-        (,)
-            <$> choice [ attribute, identifier ]
-            <*> maybe (whitespace *> keyword "as" *> identifier)
+    or attribute identifier
+        |> map (,)
+        |> andMap (whitespace |> ignore (keyword "as") |> keep identifier |> maybe)
+        |> sepBy commaSep
 
 
 importStmt : Parser s Statement
 importStmt =
-    SImport
-        <$> (keyword "import" *> importAs)
-        <?> "import statement"
+    keyword "import"
+        |> keep importAs
+        |> map SImport
+        |> onerror "import statement"
 
 
 importFromStmt : Parser s Statement
 importFromStmt =
-    SImportFrom
-        <$> (keyword "from" *> choice [ attribute, identifier ] <* spaces)
-        <*> (keyword "import" *> importAs)
-        <?> "from statement"
+    keyword "from"
+        |> keep (or attribute identifier)
+        |> ignore spaces
+        |> map SImportFrom
+        |> ignore (keyword "import")
+        |> andMap importAs
+        |> onerror "from statement"
 
 
 globalStmt : Parser s Statement
 globalStmt =
-    SGlobal <$> (keyword "global" *> sepBy commaSep identifier)
+    keyword "global"
+        |> keep (sepBy commaSep identifier)
+        |> map SGlobal
 
 
 assertStmt : Parser s Statement
 assertStmt =
-    SAssert
-        <$> (keyword "assert" *> expr)
-        <*> maybe (commaSep *> expr)
+    keyword "assert"
+        |> keep expr
+        |> map SAssert
+        |> andMap (commaSep |> keep expr |> maybe)
 
 
 assignop : Parser s (Expression -> Expression -> Expression)
 assignop =
-    EAssign <$ token (string "=")
+    token (string "=") |> onsuccess EAssign
 
 
 assignStmt : Parser s Statement
 assignStmt =
-    SAssign <$> chainr assignop expr
+    chainr assignop expr |> map SAssign
 
 
 indentation : Parser Indentation res -> Parser Indentation res
@@ -398,14 +432,15 @@ indentation p =
                         indent =
                             String.length s
                     in
-                        if indent == current then
-                            succeed ()
-                        else
-                            fail ("expected " ++ toString current ++ " spaces of indentation")
+                    if indent == current then
+                        succeed ()
+
+                    else
+                        fail ("expected " ++ toString current ++ " spaces of indentation")
             in
-                spaces >>= validate
+            spaces |> andThen validate
     in
-        withState skipIndent *> p
+    withState skipIndent |> keep p
 
 
 indent : Parser Indentation ()
@@ -420,17 +455,18 @@ indent =
                                 indent =
                                     String.length s
                             in
-                                case stack of
-                                    [] ->
-                                        fail "negative indentation"
+                            case stack of
+                                [] ->
+                                    fail "negative indentation"
 
-                                    current :: _ ->
-                                        if indent > current then
-                                            putState (indent :: stack)
-                                        else
-                                            fail "expected indentation"
+                                current :: _ ->
+                                    if indent > current then
+                                        putState (indent :: stack)
+
+                                    else
+                                        fail "expected indentation"
             in
-                lookAhead <| spaces >>= push
+            spaces |> andThen push |> lookAhead
 
 
 dedent : Parser Indentation ()
@@ -445,14 +481,14 @@ dedent =
                                 rem =
                                     dropWhile ((/=) (String.length s)) stack
                             in
-                                case rem of
-                                    _ :: _ ->
-                                        putState rem
+                            case rem of
+                                _ :: _ ->
+                                    putState rem
 
-                                    _ ->
-                                        fail "unindent does not match any outer indentation level"
+                                _ ->
+                                    fail "unindent does not match any outer indentation level"
             in
-                spaces >>= pop
+            spaces |> andThen pop
 
 
 block : Parser Indentation (List CompoundStatement)
@@ -460,11 +496,11 @@ block =
     lazy <|
         \() ->
             string ":"
-                *> whitespace
-                *> eol
-                *> indent
-                *> many1 stmt
-                <* dedent
+                |> ignore whitespace
+                |> ignore eol
+                |> ignore indent
+                |> keep (many1 stmt)
+                |> ignore dedent
 
 
 blockStmt : Parser Indentation (List CompoundStatement -> CompoundStatement) -> Parser Indentation CompoundStatement
@@ -499,33 +535,41 @@ simpleStmt =
                         , exprStmt
                         ]
             in
-                indentation (CSimple <$> sepBy (string ";" <* whitespace) stmt <* (() <$ eol <|> end))
+            sepBy (string ";" |> ignore whitespace) stmt
+                |> ignore (or (skip eol) end)
+                |> map CSimple
+                |> indentation
 
 
 whileStmt : Parser s (List CompoundStatement -> CompoundStatement)
 whileStmt =
-    CWhile <$> (keyword "while" *> expr)
+    keyword "while"
+        |> keep expr
+        |> map CWhile
 
 
 forStmt : Parser s (List CompoundStatement -> CompoundStatement)
 forStmt =
-    CFor
-        <$> (keyword "for" *> identifier)
-        <*> (spaces *> keyword "in" *> expr)
+    keyword "for"
+        |> keep identifier
+        |> map CFor
+        |> andMap (spaces |> ignore (keyword "in") |> keep expr)
 
 
 withStmt : Parser s (List CompoundStatement -> CompoundStatement)
 withStmt =
-    CWith
-        <$> (keyword "with" *> expr)
-        <*> maybe (keyword "as" *> identifier)
+    keyword "with"
+        |> keep expr
+        |> map CWith
+        |> andMap (keyword "as" |> keep identifier |> maybe)
 
 
 funcStmt : Parser s (List CompoundStatement -> CompoundStatement)
 funcStmt =
-    CFunc
-        <$> (keyword "def" *> identifier)
-        <*> parens (sepBy commaSep identifier)
+    keyword "def"
+        |> keep identifier
+        |> map CFunc
+        |> andMap (parens <| sepBy commaSep identifier)
 
 
 compoundStmt : Parser Indentation CompoundStatement
@@ -541,14 +585,14 @@ compoundStmt =
                         , funcStmt
                         ]
             in
-                choice parsers
+            choice parsers
 
 
 stmt : Parser Indentation CompoundStatement
 stmt =
     lazy <|
         \() ->
-            compoundStmt <|> simpleStmt
+            or compoundStmt simpleStmt
 
 
 program : Parser Indentation (List CompoundStatement)
@@ -577,15 +621,15 @@ formatError ms stream =
         padding =
             location.column + separatorOffset + 2
     in
-        "Parse error around line:\n\n"
-            ++ toString location.line
-            ++ separator
-            ++ location.source
-            ++ "\n"
-            ++ String.padLeft padding ' ' "^"
-            ++ "\nI expected one of the following:\n"
-            ++ expectationSeparator
-            ++ String.join expectationSeparator ms
+    "Parse error around line:\n\n"
+        ++ toString location.line
+        ++ separator
+        ++ location.source
+        ++ "\n"
+        ++ String.padLeft padding ' ' "^"
+        ++ "\nI expected one of the following:\n"
+        ++ expectationSeparator
+        ++ String.join expectationSeparator ms
 
 
 parse : String -> Result String (List CompoundStatement)
