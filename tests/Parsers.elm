@@ -1,4 +1,4 @@
-module Parsers exposing (..)
+module Parsers exposing (calcSuite, manyTillSuite, sepEndBy1Suite, sepEndBySuite, sequenceSuite, successful)
 
 import Calc exposing (calc)
 import Combine exposing (..)
@@ -44,10 +44,10 @@ manyTillSuite : Test
 manyTillSuite =
     let
         comment =
-            string "<!--" *> manyTill anyChar (string "-->")
+            string "<!--" |> keep (manyTill anyChar (string "-->"))
 
         line =
-            manyTill anyChar (many space *> eol)
+            manyTill anyChar (many space |> keep eol)
     in
     describe "manyTill tests"
         [ successful "Example" comment "<!-- test -->" [ ' ', 't', 'e', 's', 't', ' ' ]

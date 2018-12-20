@@ -1,4 +1,4 @@
-module CurrentLocationTests exposing (..)
+module CurrentLocationTests exposing (entryPoint, noNegativeValuesForColumn, noNegativeValuesForLine, specificLocationTests)
 
 import Combine exposing (..)
 import Combine.Char
@@ -57,21 +57,22 @@ noNegativeValuesForColumn =
                 c =
                     if String.length s == 0 then
                         0
-                    else
-                        (i % String.length s)
-            in
-                case
-                    Combine.parse
-                        (Combine.count c Combine.Char.anyChar
-                            *> (Combine.withColumn Combine.succeed)
-                        )
-                        s
-                of
-                    Err _ ->
-                        Expect.fail "Should always parse"
 
-                    Ok ( _, _, v ) ->
-                        Expect.greaterThan -1 v
+                    else
+                        i % String.length s
+            in
+            case
+                Combine.parse
+                    (Combine.count c Combine.Char.anyChar
+                        |> keep (Combine.withColumn Combine.succeed)
+                    )
+                    s
+            of
+                Err _ ->
+                    Expect.fail "Should always parse"
+
+                Ok ( _, _, v ) ->
+                    Expect.greaterThan -1 v
 
 
 noNegativeValuesForLine : Test
@@ -82,18 +83,19 @@ noNegativeValuesForLine =
                 c =
                     if String.length s == 0 then
                         0
-                    else
-                        (i % String.length s)
-            in
-                case
-                    Combine.parse
-                        (Combine.count c Combine.Char.anyChar
-                            *> (Combine.withLine Combine.succeed)
-                        )
-                        s
-                of
-                    Err _ ->
-                        Expect.fail "Should always parse"
 
-                    Ok ( _, _, v ) ->
-                        Expect.greaterThan -1 v
+                    else
+                        i % String.length s
+            in
+            case
+                Combine.parse
+                    (Combine.count c Combine.Char.anyChar
+                        |> keep (Combine.withLine Combine.succeed)
+                    )
+                    s
+            of
+                Err _ ->
+                    Expect.fail "Should always parse"
+
+                Ok ( _, _, v ) ->
+                    Expect.greaterThan -1 v
