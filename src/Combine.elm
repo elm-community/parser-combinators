@@ -1,73 +1,13 @@
-module Combine
-    exposing
-        ( Parser
-        , InputStream
-        , ParseLocation
-        , ParseContext
-        , ParseResult
-        , ParseError
-        , ParseOk
-        , primitive
-        , app
-        , lazy
-        , parse
-        , runParser
-        , withState
-        , putState
-        , modifyState
-        , withLocation
-        , withLine
-        , withColumn
-        , currentLocation
-        , currentSourceLine
-        , currentLine
-        , currentColumn
-        , modifyStream
-        , map
-        , mapError
-        , andThen
-        , andMap
-        , sequence
-        , fail
-        , succeed
-        , string
-        , regex
-        , end
-        , whitespace
-        , whitespace1
-        , lookAhead
-        , while
-        , or
-        , choice
-        , optional
-        , maybe
-        , many
-        , many1
-        , manyTill
-        , sepBy
-        , sepBy1
-        , sepEndBy
-        , sepEndBy1
-        , skip
-        , skipMany
-        , skipMany1
-        , chainl
-        , chainr
-        , count
-        , between
-        , parens
-        , braces
-        , brackets
-        , (<?>)
-        , (>>=)
-        , (<$>)
-        , (<$)
-        , ($>)
-        , (<*>)
-        , (<*)
-        , (*>)
-        , (<|>)
-        )
+module Combine exposing
+    ( Parser, InputStream, ParseLocation, ParseContext, ParseResult, ParseError, ParseOk
+    , parse, runParser
+    , primitive, app, lazy
+    , fail, succeed, string, regex, end, whitespace, whitespace1
+    , map, onsuccess, mapError, error
+    , andThen, andMap, sequence
+    , lookAhead, while, or, choice, optional, maybe, many, many1, manyTill, sepBy, sepBy1, sepEndBy, sepEndBy1, skip, skipMany, skipMany1, chainl, chainr, count, between, parens, braces, brackets
+    , withState, putState, modifyState, withLocation, withLine, withColumn, currentLocation, currentSourceLine, currentLine, currentColumn, modifyStream
+    )
 
 {-| This library provides facilities for parsing structured text data
 into concrete Elm values.
@@ -111,17 +51,17 @@ into concrete Elm values.
 
 ### Transforming Parsers
 
-@docs map, (<$>), (<$), ($>), mapError, (<?>)
+@docs map, onsuccess, mapError, error
 
 
 ### Chaining Parsers
 
-@docs andThen, (>>=), andMap, (<*>), (<*), (*>), sequence
+@docs andThen, andMap, sequence
 
 
 ### Parser Combinators
 
-@docs lookAhead, while, or, (<|>), choice, optional, maybe, many, many1, manyTill, sepBy, sepBy1, sepEndBy, sepEndBy1, skip, skipMany, skipMany1, chainl, chainr, count, between, parens, braces, brackets
+@docs lookAhead, while, or, choice, optional, maybe, many, many1, manyTill, sepBy, sepBy1, sepEndBy, sepEndBy1, skip, skipMany, skipMany1, chainl, chainr, count, between, parens, braces, brackets
 
 
 ### State Combinators
@@ -257,7 +197,7 @@ Here's how you would implement a greedy version of `manyTill` using
                             ( estate, estream, Err ms ) ->
                                 ( estate, estream, Err ms )
         in
-            primitive <| accumulate []
+        primitive <| accumulate []
 
 -}
 app : Parser state res -> state -> InputStream -> ParseContext state res
@@ -312,7 +252,7 @@ parse p =
       -- Parse an int, then increment the state and return the parsed
       -- int.  It's important that we try to parse the int _first_
       -- since modifying the state will always succeed.
-      int <* modifyState ((+) 1)
+      int |> ignore (modifyState ((+) 1))
 
     ints : Parse Int (List Int)
     ints =
@@ -355,10 +295,10 @@ function to avoid "bad-recursion" errors.
       | EList (List E)
 
     name : Parser s String
-    name = whitespace *> regex "[a-zA-Z]+" <* whitespace
+    name = whitespace |> keep (regex "[a-zA-Z]+") |> ignore whitespace
 
     term : Parser s Expression
-    term = ETerm <$> name
+    term = andMap name ETerm
 
     list : Parser s Expression
     list =
@@ -366,7 +306,8 @@ function to avoid "bad-recursion" errors.
         -- helper is itself a function so we avoid the case where the
         -- value `list` tries to apply itself in its definition.
         helper () =
-          EList <$> between (string "(") (string ")") (many (term <|> list))
+          between (string "(") (string ")") (many (or term list))
+          |> andMap EList
       in
         -- lazy defers calling helper until it's actually needed.
         lazy helper
@@ -481,14 +422,16 @@ currentLocation stream =
                         lengthPlusNL =
                             length + 1
                     in
-                        if position == length then
-                            ParseLocation line currentLine position
-                        else if position > length then
-                            find (position - lengthPlusNL) (currentLine + 1) rest
-                        else
-                            ParseLocation line currentLine position
+                    if position == length then
+                        ParseLocation line currentLine position
+
+                    else if position > length then
+                        find (position - lengthPlusNL) (currentLine + 1) rest
+
+                    else
+                        ParseLocation line currentLine position
     in
-        find stream.position 0 (String.split "\n" stream.data)
+    find stream.position 0 (String.split "\n" stream.data)
 
 
 {-| Get the current source line in the input stream.
@@ -519,6 +462,7 @@ modifyStream f =
     Parser <|
         \state stream ->
             app (succeed ()) state { stream | input = f stream.input }
+
 
 
 -- Transformers
@@ -608,7 +552,7 @@ andThen f p =
     sum =
       int
         |> map (+)
-        |> andMap (plus *> int)
+        |> andMap (plus |> keep int)
 
     parse sum "1+2"
     -- Ok 3
@@ -616,7 +560,7 @@ andThen f p =
 -}
 andMap : Parser s a -> Parser s (a -> b) -> Parser s b
 andMap rp lp =
-    lp >>= flip map rp
+    lp |> andThen (flip map rp)
 
 
 {-| Run a list of parsers in sequence, accumulating the results. The
@@ -647,9 +591,9 @@ sequence parsers =
                         ( estate, estream, Err ms ) ->
                             ( estate, estream, Err ms )
     in
-        Parser <|
-            \state stream ->
-                accumulate [] parsers state stream
+    Parser <|
+        \state stream ->
+            accumulate [] parsers state stream
 
 
 
@@ -714,7 +658,8 @@ string s =
                     pos =
                         stream.position + len
                 in
-                    ( state, { stream | input = rem, position = pos }, Ok s )
+                ( state, { stream | input = rem, position = pos }, Ok s )
+
             else
                 ( state, stream, Err [ "expected " ++ toString s ] )
 
@@ -735,27 +680,28 @@ regex pat =
         pattern =
             if String.startsWith "^" pat then
                 pat
+
             else
                 "^" ++ pat
     in
-        Parser <|
-            \state stream ->
-                case Regex.find (Regex.AtMost 1) (Regex.regex pattern) stream.input of
-                    [ match ] ->
-                        let
-                            len =
-                                String.length match.match
+    Parser <|
+        \state stream ->
+            case Regex.find (Regex.AtMost 1) (Regex.regex pattern) stream.input of
+                [ match ] ->
+                    let
+                        len =
+                            String.length match.match
 
-                            rem =
-                                String.dropLeft len stream.input
+                        rem =
+                            String.dropLeft len stream.input
 
-                            pos =
-                                stream.position + len
-                        in
-                            ( state, { stream | input = rem, position = pos }, Ok match.match )
+                        pos =
+                            stream.position + len
+                    in
+                    ( state, { stream | input = rem, position = pos }, Ok match.match )
 
-                    _ ->
-                        ( state, stream, Err [ "expected input matching Regexp /" ++ pattern ++ "/" ] )
+                _ ->
+                    ( state, stream, Err [ "expected input matching Regexp /" ++ pattern ++ "/" ] )
 
 
 {-| Consume input while the predicate matches.
@@ -778,20 +724,21 @@ while pred =
                             pos =
                                 stream.position + 1
                         in
-                            accumulate (acc ++ c) state { stream | input = rest, position = pos }
+                        accumulate (acc ++ c) state { stream | input = rest, position = pos }
+
                     else
                         ( state, stream, acc )
 
                 Nothing ->
                     ( state, stream, acc )
     in
-        Parser <|
-            \state stream ->
-                let
-                    ( rstate, rstream, res ) =
-                        accumulate "" state stream
-                in
-                    ( rstate, rstream, Ok res )
+    Parser <|
+        \state stream ->
+            let
+                ( rstate, rstream, res ) =
+                    accumulate "" state stream
+            in
+            ( rstate, rstream, Ok res )
 
 
 {-| Fail when the input is not empty.
@@ -809,6 +756,7 @@ end =
         \state stream ->
             if stream.input == "" then
                 ( state, stream, Ok () )
+
             else
                 ( state, stream, Err [ "expected end of input" ] )
 
@@ -884,7 +832,7 @@ choice xs =
 -}
 optional : a -> Parser s a -> Parser s a
 optional res p =
-    p <|> succeed res
+    succeed res |> or p
 
 
 {-| Wrap the return value into a `Maybe`. Returns `Nothing` on failure.
@@ -928,19 +876,20 @@ many p =
                 ( rstate, rstream, Ok res ) ->
                     if stream == rstream then
                         ( rstate, rstream, List.reverse acc )
+
                     else
                         accumulate (res :: acc) rstate rstream
 
                 _ ->
                     ( state, stream, List.reverse acc )
     in
-        Parser <|
-            \state stream ->
-                let
-                    ( rstate, rstream, res ) =
-                        accumulate [] state stream
-                in
-                    ( rstate, rstream, Ok res )
+    Parser <|
+        \state stream ->
+            let
+                ( rstate, rstream, res ) =
+                    accumulate [] state stream
+            in
+            ( rstate, rstream, Ok res )
 
 
 {-| Parse at least one result.
@@ -954,13 +903,13 @@ many p =
 -}
 many1 : Parser s a -> Parser s (List a)
 many1 p =
-    (::) <$> p <*> many p
+    p |> map (::) |> andMap (many p)
 
 
 {-| Apply the first parser zero or more times until second parser
 succeeds. On success, the list of the first parser's results is returned.
 
-    string "<!--" *> manyTill anyChar (string "-->")
+    string "<!--" |> keep (manyTill anyChar (string "-->"))
 
 -}
 manyTill : Parser s a -> Parser s end -> Parser s (List a)
@@ -979,7 +928,7 @@ manyTill p end =
                         _ ->
                             ( estate, estream, Err ms )
     in
-        Parser (accumulate [])
+    Parser (accumulate [])
 
 
 {-| Parser zero or more occurences of one parser separated by another.
@@ -996,14 +945,14 @@ manyTill p end =
 -}
 sepBy : Parser s x -> Parser s a -> Parser s (List a)
 sepBy sep p =
-    sepBy1 sep p <|> succeed []
+    or (sepBy1 sep p) (succeed [])
 
 
 {-| Parse one or more occurences of one parser separated by another.
 -}
 sepBy1 : Parser s x -> Parser s a -> Parser s (List a)
 sepBy1 sep p =
-    (::) <$> p <*> many (sep *> p)
+    map (::) p |> andMap (many (sep |> keep p))
 
 
 {-| Parse zero or more occurences of one parser separated and
@@ -1015,7 +964,7 @@ optionally ended by another.
 -}
 sepEndBy : Parser s x -> Parser s a -> Parser s (List a)
 sepEndBy sep p =
-    sepEndBy1 sep p <|> succeed []
+    or (sepEndBy1 sep p) (succeed [])
 
 
 {-| Parse one or more occurences of one parser separated and
@@ -1033,28 +982,28 @@ optionally ended by another.
 -}
 sepEndBy1 : Parser s x -> Parser s a -> Parser s (List a)
 sepEndBy1 sep p =
-    sepBy1 sep p <* maybe sep
+    sepBy1 sep p |> ignore (maybe sep)
 
 
 {-| Apply a parser and skip its result.
 -}
 skip : Parser s x -> Parser s ()
 skip p =
-    () <$ p
+    p |> onsuccess ()
 
 
 {-| Apply a parser and skip its result many times.
 -}
 skipMany : Parser s x -> Parser s ()
 skipMany p =
-    () <$ many (skip p)
+    many (skip p) |> onsuccess ()
 
 
 {-| Apply a parser and skip its result at least once.
 -}
 skipMany1 : Parser s x -> Parser s ()
 skipMany1 p =
-    () <$ many1 (skip p)
+    many1 (skip p) |> onsuccess ()
 
 
 {-| Parse one or more occurences of `p` separated by `op`, recursively
@@ -1065,16 +1014,17 @@ chainl : Parser s (a -> a -> a) -> Parser s a -> Parser s a
 chainl op p =
     let
         accumulate x =
-            (op
-                |> andThen
-                    (\f ->
-                        p
-                            |> andThen (\y -> accumulate (f x y))
+            succeed x
+                |> or
+                    (op
+                        |> andThen
+                            (\f ->
+                                p
+                                    |> andThen (\y -> accumulate (f x y))
+                            )
                     )
-            )
-                <|> succeed x
     in
-        andThen accumulate p
+    andThen accumulate p
 
 
 {-| Similar to `chainl` but functions of `op` are applied in
@@ -1085,17 +1035,18 @@ chainr : Parser s (a -> a -> a) -> Parser s a -> Parser s a
 chainr op p =
     let
         accumulate x =
-            (op
-                |> andThen
-                    (\f ->
-                        p
-                            |> andThen accumulate
-                            |> andThen (\y -> succeed (f x y))
+            succeed x
+                |> or
+                    (op
+                        |> andThen
+                            (\f ->
+                                p
+                                    |> andThen accumulate
+                                    |> andThen (\y -> succeed (f x y))
+                            )
                     )
-            )
-                <|> succeed x
     in
-        andThen accumulate p
+    andThen accumulate p
 
 
 {-| Parse `n` occurences of `p`.
@@ -1106,10 +1057,11 @@ count n p =
         accumulate x acc =
             if x <= 0 then
                 succeed (List.reverse acc)
+
             else
                 andThen (\res -> accumulate (x - 1) (res :: acc)) p
     in
-        accumulate n []
+    accumulate n []
 
 
 {-| Parse something between two other parsers.
@@ -1120,12 +1072,12 @@ The parser
 
 is equivalent to the parser
 
-    string "(" *> string "a" <* string ")"
+    string "(" |> keep (string "a") |> ignore (string ")")
 
 -}
 between : Parser s l -> Parser s r -> Parser s a -> Parser s a
 between lp rp p =
-    lp *> p <* rp
+    lp |> keep p |> ignore rp
 
 
 {-| Parse something between parentheses.
@@ -1151,30 +1103,30 @@ brackets =
 
 {-| Parse zero or more whitespace characters.
 
-    parse (whitespace *> string "hello") "hello"
+    parse (whitespace |> keep (string "hello")) "hello"
     -- Ok "hello"
 
-    parse (whitespace *> string "hello") "   hello"
+    parse (whitespace |> keep (string "hello")) "   hello"
     -- Ok "hello"
 
 -}
 whitespace : Parser s String
 whitespace =
-    regex "[ \t\x0D\n]*" <?> "whitespace"
+    regex "\\s*" |> error "whitespace"
 
 
 {-| Parse one or more whitespace characters.
 
-    parse (whitespace1 *> string "hello") "hello"
+    parse (whitespace1 |> keep (string "hello")) "hello"
      -- Err ["whitespace"]
 
-    parse (whitespace1 *> string "hello") "   hello"
+    parse (whitespace1 |> keep (string "hello")) "   hello"
      -- Ok "hello"
 
 -}
 whitespace1 : Parser s String
 whitespace1 =
-    regex "[ \t\x0D\n]+" <?> "whitespace"
+    regex "\\s+" |> error "whitespace"
 
 
 
@@ -1185,102 +1137,27 @@ whitespace1 =
 {-| Variant of `mapError` that replaces the Parser's error with a List
 of a single string.
 
-    parse (string "a" <?> "gimme an 'a'") "b"
+    parse (string "a" |> error "gimme an 'a'") "b"
     -- Err ["gimme an 'a'"]
 
 -}
-(<?>) : Parser s a -> String -> Parser s a
-(<?>) p m =
+error : String -> Parser s a -> Parser s a
+error m p =
     mapError (always [ m ]) p
-
-
-{-| Infix version of `andThen`.
-
-    import Combine.Num exposing (int)
-
-    choosy : Parser s String
-    choosy =
-      let
-        createParser n =
-          if n % 2 == 0 then
-            string " is even"
-          else
-            string " is odd"
-      in
-        int >>= createParser
-
-    parse choosy "1 is odd"
-    -- Ok " is odd"
-
-    parse choosy "2 is even"
-    -- Ok " is even"
-
-    parse choosy "1 is even"
-    -- Err ["expected \" is odd\""]
-
--}
-(>>=) : Parser s a -> (a -> Parser s b) -> Parser s b
-(>>=) =
-    flip andThen
-
-
-{-| Infix version of `map`.
-
-    parse (toString <$> int) "42"
-    -- Ok "42"
-
-    parse (toString <$> int) "abc"
-    -- Err ["expected an integer"]
-
--}
-(<$>) : (a -> b) -> Parser s a -> Parser s b
-(<$>) =
-    map
-
-
-{-| Run a parser and return the value on the left on success.
-
-    parse (True <$ string "true") "true"
-    -- Ok True
-
-    parse (True <$ string "true") "false"
-    -- Err ["expected \"true\""]
-
--}
-(<$) : a -> Parser s x -> Parser s a
-(<$) res =
-    map (always res)
 
 
 {-| Run a parser and return the value on the right on success.
 
-    parse (string "true" $> True) "true"
+    parse (string "true" |> onsuccess True) "true"
     -- Ok True
 
-    parse (string "true" $> True) "false"
+    parse (string "true" |> onsuccess True) "false"
     -- Err ["expected \"true\""]
 
 -}
-($>) : Parser s x -> a -> Parser s a
-($>) =
-    flip (<$)
-
-
-{-| Infix version of `andMap`.
-
-    add : Int -> Int -> Int
-    add = (+)
-
-    plus : Parser s String
-    plus = string "+"
-
-    parse (add <$> int <*> (plus *> int)) "1+1"
-    -- Ok 2
-
--}
-(<*>) : Parser s (a -> b) -> Parser s a -> Parser s b
-(<*>) =
-    flip andMap
+onsuccess : a -> Parser s x -> Parser s a
+onsuccess res =
+    map (always res)
 
 
 {-| Join two parsers, ignoring the result of the one on the right.
@@ -1288,17 +1165,17 @@ of a single string.
     unsuffix : Parser s String
     unsuffix =
       regex "[a-z]"
-        <* regex "[!?]"
+        |> keep (regex "[!?]")
 
     parse unsuffix "a!"
     -- Ok "a"
 
 -}
-(<*) : Parser s a -> Parser s x -> Parser s a
-(<*) lp rp =
-    lp
-        |> map always
-        |> andMap rp
+keep : Parser s a -> Parser s x -> Parser s a
+keep p1 p2 =
+    p2
+        |> map (flip always)
+        |> andMap p1
 
 
 {-| Join two parsers, ignoring the result of the one on the left.
@@ -1306,50 +1183,15 @@ of a single string.
     unprefix : Parser s String
     unprefix =
       string ">"
-        *> while ((==) ' ')
-        *> while ((/=) ' ')
+        |> ignore (while ((==) ' '))
+        |> ignore (while ((/=) ' '))
 
     parse unprefix "> a"
     -- Ok "a"
 
 -}
-(*>) : Parser s x -> Parser s a -> Parser s a
-(*>) lp rp =
-    lp
-        |> map (flip always)
-        |> andMap rp
-
-
-{-| Synonym for `or`.
--}
-(<|>) : Parser s a -> Parser s a -> Parser s a
-(<|>) =
-    or
-
-
-
--- Fixities
-
-
-infixl 1 >>=
-
-
-infixr 1 <|>
-
-
-infixl 4 <$>
-
-
-infixl 4 <$
-
-
-infixl 4 $>
-
-
-infixl 4 <*>
-
-
-infixl 4 <*
-
-
-infixl 4 *>
+ignore : Parser s x -> Parser s a -> Parser s a
+ignore p1 p2 =
+    p2
+        |> map always
+        |> andMap p1

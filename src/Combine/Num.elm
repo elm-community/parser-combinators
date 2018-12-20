@@ -1,15 +1,12 @@
-module Combine.Num
-    exposing
-        ( sign
-        , digit
-        , int
-        , float
-        )
+module Combine.Num exposing (sign, digit, int, float)
 
 {-| This module contains Parsers specific to parsing numbers.
 
+
 # Parsers
+
 @docs sign, digit, int, float
+
 -}
 
 import Char
@@ -44,10 +41,9 @@ for negative numbers.
 sign : Parser s Int
 sign =
     optional 1
-        (choice
-            [ 1 <$ string "+"
-            , -1 <$ string "-"
-            ]
+        (or
+            (string "+" |> onsuccess 1)
+            (string "-" |> onsuccess -1)
         )
 
 
@@ -59,24 +55,22 @@ digit =
         toDigit c =
             Char.toCode c - Char.toCode '0'
     in
-        toDigit <$> Combine.Char.digit <?> "expected a digit"
+    map toDigit Combine.Char.digit |> error "expected a digit"
 
 
 {-| Parse an integer.
 -}
 int : Parser s Int
 int =
-    (*)
-        <$> sign
-        <*> (toInt <$> regex "(0|[1-9][0-9]*)")
-        <?> "expected an integer"
+    map (*) sign
+        |> andMap (regex "(0|[1-9][0-9]*)" |> map toInt)
+        |> error "expected an integer"
 
 
 {-| Parse a float.
 -}
 float : Parser s Float
 float =
-    ((*) << Basics.toFloat)
-        <$> sign
-        <*> (toFloat <$> regex "(0|[1-9][0-9]*)(\\.[0-9]+)")
-        <?> "expected a float"
+    map ((*) << Basics.toFloat) sign
+        |> andMap (regex "(0|[1-9][0-9]*)(\\.[0-9]+)" |> map toFloat)
+        |> error "expected a float"
