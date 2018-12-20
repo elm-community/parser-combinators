@@ -3,7 +3,7 @@ module Combine exposing
     , parse, runParser
     , primitive, app, lazy
     , fail, succeed, string, regex, end, whitespace, whitespace1
-    , map, onsuccess, mapError, error
+    , map, onsuccess, mapError, onerror
     , andThen, andMap, sequence
     , lookAhead, while, or, choice, optional, maybe, many, many1, manyTill, sepBy, sepBy1, sepEndBy, sepEndBy1, skip, skipMany, skipMany1, chainl, chainr, count, between, parens, braces, brackets, keep, ignore
     , withState, putState, modifyState, withLocation, withLine, withColumn, currentLocation, currentSourceLine, currentLine, currentColumn, modifyStream
@@ -51,7 +51,7 @@ into concrete Elm values.
 
 ### Transforming Parsers
 
-@docs map, onsuccess, mapError, error
+@docs map, onsuccess, mapError, onerror
 
 
 ### Chaining Parsers
@@ -1112,7 +1112,7 @@ brackets =
 -}
 whitespace : Parser s String
 whitespace =
-    regex "\\s*" |> error "whitespace"
+    regex "\\s*" |> onerror "whitespace"
 
 
 {-| Parse one or more whitespace characters.
@@ -1126,18 +1126,18 @@ whitespace =
 -}
 whitespace1 : Parser s String
 whitespace1 =
-    regex "\\s+" |> error "whitespace"
+    regex "\\s+" |> onerror "whitespace"
 
 
 {-| Variant of `mapError` that replaces the Parser's error with a List
 of a single string.
 
-    parse (string "a" |> error "gimme an 'a'") "b"
+    parse (string "a" |> onerror "gimme an 'a'") "b"
     -- Err ["gimme an 'a'"]
 
 -}
-error : String -> Parser s a -> Parser s a
-error m p =
+onerror : String -> Parser s a -> Parser s a
+onerror m p =
     mapError (always [ m ]) p
 
 

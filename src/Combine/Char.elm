@@ -15,7 +15,7 @@ much faster.
 -}
 
 import Char
-import Combine exposing (Parser, error, onsuccess, or, primitive, regex)
+import Combine exposing (Parser, onerror, onsuccess, or, primitive, regex)
 import String
 
 
@@ -59,7 +59,7 @@ satisfy pred =
 -}
 char : Char -> Parser s Char
 char c =
-    satisfy ((==) c) |> error ("expected " ++ toString c)
+    satisfy ((==) c) |> onerror ("expected " ++ toString c)
 
 
 {-| Parse any character.
@@ -73,7 +73,7 @@ char c =
 -}
 anyChar : Parser s Char
 anyChar =
-    satisfy (always True) |> error "expected any character"
+    satisfy (always True) |> onerror "expected any character"
 
 
 {-| Parse a character from the given list.
@@ -87,7 +87,7 @@ anyChar =
 -}
 oneOf : List Char -> Parser s Char
 oneOf cs =
-    satisfy (flip List.member cs) |> error ("expected one of " ++ toString cs)
+    satisfy (flip List.member cs) |> onerror ("expected one of " ++ toString cs)
 
 
 {-| Parse a character that is not in the given list.
@@ -101,35 +101,35 @@ oneOf cs =
 -}
 noneOf : List Char -> Parser s Char
 noneOf cs =
-    satisfy (not << flip List.member cs) |> error ("expected none of " ++ toString cs)
+    satisfy (not << flip List.member cs) |> onerror ("expected none of " ++ toString cs)
 
 
 {-| Parse a space character.
 -}
 space : Parser s Char
 space =
-    satisfy ((==) ' ') |> error "expected space"
+    satisfy ((==) ' ') |> onerror "expected space"
 
 
 {-| Parse a `\t` character.
 -}
 tab : Parser s Char
 tab =
-    satisfy ((==) '\t') |> error "expected tab"
+    satisfy ((==) '\t') |> onerror "expected tab"
 
 
 {-| Parse a `\n` character.
 -}
 newline : Parser s Char
 newline =
-    satisfy ((==) '\n') |> error "expected newline"
+    satisfy ((==) '\n') |> onerror "expected newline"
 
 
 {-| Parse a `\r\n` sequence, returning a `\n` character.
 -}
 crlf : Parser s Char
 crlf =
-    regex "\\r\\n" |> onsuccess '\n' |> error "expected crlf"
+    regex "\\r\\n" |> onsuccess '\n' |> onerror "expected crlf"
 
 
 {-| Parse an end of line character or sequence, returning a `\n` character.
@@ -143,32 +143,32 @@ eol =
 -}
 lower : Parser s Char
 lower =
-    satisfy Char.isLower |> error "expected a lowercase character"
+    satisfy Char.isLower |> onerror "expected a lowercase character"
 
 
 {-| Parse any uppercase character.
 -}
 upper : Parser s Char
 upper =
-    satisfy Char.isUpper |> error "expected an uppercase character"
+    satisfy Char.isUpper |> onerror "expected an uppercase character"
 
 
 {-| Parse any base 10 digit.
 -}
 digit : Parser s Char
 digit =
-    satisfy Char.isDigit |> error "expected a digit"
+    satisfy Char.isDigit |> onerror "expected a digit"
 
 
 {-| Parse any base 8 digit.
 -}
 octDigit : Parser s Char
 octDigit =
-    satisfy Char.isOctDigit |> error "expected an octal digit"
+    satisfy Char.isOctDigit |> onerror "expected an octal digit"
 
 
 {-| Parse any base 16 digit.
 -}
 hexDigit : Parser s Char
 hexDigit =
-    satisfy Char.isHexDigit |> error "expected a hexadecimal digit"
+    satisfy Char.isHexDigit |> onerror "expected a hexadecimal digit"

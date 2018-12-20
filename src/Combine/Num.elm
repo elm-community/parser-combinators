@@ -55,7 +55,7 @@ digit =
         toDigit c =
             Char.toCode c - Char.toCode '0'
     in
-    map toDigit Combine.Char.digit |> error "expected a digit"
+    map toDigit Combine.Char.digit |> onerror "expected a digit"
 
 
 {-| Parse an integer.
@@ -64,7 +64,7 @@ int : Parser s Int
 int =
     map (*) sign
         |> andMap (regex "(0|[1-9][0-9]*)" |> map toInt)
-        |> error "expected an integer"
+        |> onerror "expected an integer"
 
 
 {-| Parse a float.
@@ -73,4 +73,4 @@ float : Parser s Float
 float =
     map ((*) << Basics.toFloat) sign
         |> andMap (regex "(0|[1-9][0-9]*)(\\.[0-9]+)" |> map toFloat)
-        |> error "expected a float"
+        |> onerror "expected a float"
