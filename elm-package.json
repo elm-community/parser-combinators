@@ -1,7 +1,7 @@
 {
     "version": "2.0.0",
-    "summary": "A parser combinator library",
-    "repository": "https://github.com/elm-community/parser-combinators.git",
+    "summary": "A port of the elm-community-parsercombinator library to elm 0.19",
+    "repository": "https://github.com/andre-dietrich/parser-combinators.git",
     "license": "BSD3",
     "source-directories": [
         "examples",
