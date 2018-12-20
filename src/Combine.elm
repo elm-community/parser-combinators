@@ -5,7 +5,7 @@ module Combine exposing
     , fail, succeed, string, regex, end, whitespace, whitespace1
     , map, onsuccess, mapError, error
     , andThen, andMap, sequence
-    , lookAhead, while, or, choice, optional, maybe, many, many1, manyTill, sepBy, sepBy1, sepEndBy, sepEndBy1, skip, skipMany, skipMany1, chainl, chainr, count, between, parens, braces, brackets
+    , lookAhead, while, or, choice, optional, maybe, many, many1, manyTill, sepBy, sepBy1, sepEndBy, sepEndBy1, skip, skipMany, skipMany1, chainl, chainr, count, between, parens, braces, brackets, keep, ignore
     , withState, putState, modifyState, withLocation, withLine, withColumn, currentLocation, currentSourceLine, currentLine, currentColumn, modifyStream
     )
 
@@ -61,7 +61,7 @@ into concrete Elm values.
 
 ### Parser Combinators
 
-@docs lookAhead, while, or, choice, optional, maybe, many, many1, manyTill, sepBy, sepBy1, sepEndBy, sepEndBy1, skip, skipMany, skipMany1, chainl, chainr, count, between, parens, braces, brackets
+@docs lookAhead, while, or, choice, optional, maybe, many, many1, manyTill, sepBy, sepBy1, sepEndBy, sepEndBy1, skip, skipMany, skipMany1, chainl, chainr, count, between, parens, braces, brackets, onsuccess, keep, ignore
 
 
 ### State Combinators
@@ -1127,11 +1127,6 @@ whitespace =
 whitespace1 : Parser s String
 whitespace1 =
     regex "\\s+" |> error "whitespace"
-
-
-
--- Infix operators
--- ---------------
 
 
 {-| Variant of `mapError` that replaces the Parser's error with a List
