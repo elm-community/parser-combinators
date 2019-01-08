@@ -16,6 +16,7 @@ much faster.
 
 import Char
 import Combine exposing (Parser, onerror, onsuccess, or, primitive, regex, string)
+import Flip exposing (flip)
 import String
 
 
@@ -59,7 +60,16 @@ satisfy pred =
 -}
 char : Char -> Parser s Char
 char c =
-    satisfy ((==) c) |> onerror ("expected " ++ toString c)
+    satisfy ((==) c) |> onerror ("expected " ++ String.fromChar c)
+
+
+charList : List Char -> String
+charList chars =
+    chars
+        |> List.map (\c -> "'" ++ String.fromChar c ++ "'")
+        |> List.intersperse ", "
+        |> String.concat
+        |> (\str -> "[" ++ str ++ "]")
 
 
 {-| Parse any character.
@@ -87,7 +97,8 @@ anyChar =
 -}
 oneOf : List Char -> Parser s Char
 oneOf cs =
-    satisfy (flip List.member cs) |> onerror ("expected one of " ++ toString cs)
+    satisfy (flip List.member cs)
+        |> onerror ("expected one of " ++ charList cs)
 
 
 {-| Parse a character that is not in the given list.
@@ -101,7 +112,7 @@ oneOf cs =
 -}
 noneOf : List Char -> Parser s Char
 noneOf cs =
-    satisfy (not << flip List.member cs) |> onerror ("expected none of " ++ toString cs)
+    satisfy (not << flip List.member cs) |> onerror ("expected none of " ++ charList cs)
 
 
 {-| Parse a space character.
@@ -129,7 +140,7 @@ newline =
 -}
 crlf : Parser s Char
 crlf =
-    string "\r\n" |> onsuccess '\n' |> onerror "expected crlf"
+    string "\u{000D}\n" |> onsuccess '\n' |> onerror "expected crlf"
 
 
 {-| Parse an end of line character or sequence, returning a `\n` character.

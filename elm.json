@@ -1,0 +1,19 @@
+{
+    "type": "package",
+    "name": "andre-dietrich/parser-combinators",
+    "summary": "Port of the community parser combinator to elm 0.19",
+    "license": "BSD-3-Clause",
+    "version": "3.0.0",
+    "exposed-modules": [
+        "Combine",
+        "Combine.Char",
+        "Combine.Num"
+    ],
+    "elm-version": "0.19.0 <= v < 0.20.0",
+    "dependencies": {
+        "elm/core": "1.0.1 <= v < 2.0.0",
+        "elm/regex": "1.0.0 <= v < 2.0.0",
+        "pilatch/flip": "1.0.0 <= v < 2.0.0"
+    },
+    "test-dependencies": {}
+}

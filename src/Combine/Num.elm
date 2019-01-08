@@ -15,24 +15,18 @@ import Combine.Char
 import String
 
 
-unwrap : (String -> Result x res) -> String -> res
-unwrap f s =
-    case f s of
-        Ok res ->
-            res
 
-        Err m ->
-            Debug.crash ("impossible state in Combine.Num.unwrap: " ++ toString m)
+{-
+   unwrap : (String -> Maybe res) -> String -> res
+   unwrap f s =
+       case f s of
+           Just res ->
+               onsuccess  res
 
+           Nothing ->
+               onerror "impossible state in Combine.Num.unwrap: "
 
-toInt : String -> Int
-toInt =
-    unwrap String.toInt
-
-
-toFloat : String -> Float
-toFloat =
-    unwrap String.toFloat
+-}
 
 
 {-| Parse a numeric sign, returning `1` for positive numbers and `-1`
@@ -60,17 +54,19 @@ digit =
 
 {-| Parse an integer.
 -}
-int : Parser s Int
+int : Parser s (Maybe Int)
 int =
-    map (*) sign
-        |> andMap (regex "(?:0|[1-9]\\d*)" |> map toInt)
-        |> onerror "expected an integer"
+    regex "-?(?:0|[1-9]\\d*)"
+        |> map String.toInt
+
+
+
+--|> onerror "expected an integer"
 
 
 {-| Parse a float.
 -}
-float : Parser s Float
+float : Parser s (Maybe Float)
 float =
-    map ((*) << Basics.toFloat) sign
-        |> andMap (regex "(?:0|[1-9]\\d*)\\.\\d+" |> map toFloat)
-        |> onerror "expected a float"
+    regex "-?(?:0|[1-9]\\d*)\\.\\d+"
+        |> map String.toFloat

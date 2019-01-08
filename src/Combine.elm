@@ -70,7 +70,7 @@ into concrete Elm values.
 
 -}
 
-import Lazy as L
+import Flip exposing (flip)
 import Regex exposing (Regex)
 import String
 
@@ -155,7 +155,10 @@ remaining `InputStream` and a `ParseResult res`.
 -}
 type Parser state res
     = Parser (ParseFn state res)
-    | RecursiveParser (L.Lazy (ParseFn state res))
+
+
+
+--| RecursiveParser (L.Lazy (ParseFn state res))
 
 
 {-| Construct a new primitive Parser.
@@ -206,8 +209,10 @@ app p =
         Parser inner ->
             inner
 
-        RecursiveParser t ->
-            L.force t
+
+
+--        RecursiveParser t ->
+--            L.force t
 
 
 {-| Parse a string. See `runParser` if your parser needs to manage
@@ -324,7 +329,8 @@ function to avoid "bad-recursion" errors.
 -}
 lazy : (() -> Parser s a) -> Parser s a
 lazy t =
-    RecursiveParser (L.lazy (\() -> app (t ())))
+    --    RecursiveParser (L.lazy (\() -> app (t ())))
+    succeed () |> andThen t
 
 
 {-| Transform both the result and error message of a parser.
@@ -409,10 +415,10 @@ withColumn f =
 currentLocation : InputStream -> ParseLocation
 currentLocation stream =
     let
-        find position currentLine lines =
+        find position currentLine_ lines =
             case lines of
                 [] ->
-                    ParseLocation "" currentLine position
+                    ParseLocation "" currentLine_ position
 
                 line :: rest ->
                     let
@@ -423,13 +429,13 @@ currentLocation stream =
                             length + 1
                     in
                     if position == length then
-                        ParseLocation line currentLine position
+                        ParseLocation line currentLine_ position
 
                     else if position > length then
-                        find (position - lengthPlusNL) (currentLine + 1) rest
+                        find (position - lengthPlusNL) (currentLine_ + 1) rest
 
                     else
-                        ParseLocation line currentLine position
+                        ParseLocation line currentLine_ position
     in
     find stream.position 0 (String.split "\n" stream.data)
 
@@ -661,7 +667,7 @@ string s =
                 ( state, { stream | input = rem, position = pos }, Ok s )
 
             else
-                ( state, stream, Err [ "expected " ++ toString s ] )
+                ( state, stream, Err [ "expected " ++ s ] )
 
 
 {-| Parse a Regex match.
@@ -686,7 +692,7 @@ regex pat =
     in
     Parser <|
         \state stream ->
-            case Regex.find (Regex.AtMost 1) (Regex.regex pattern) stream.input of
+            case Regex.findAtMost 1 (Regex.fromString pattern |> Maybe.withDefault Regex.never) stream.input of
                 [ match ] ->
                     let
                         len =
@@ -913,10 +919,10 @@ succeeds. On success, the list of the first parser's results is returned.
 
 -}
 manyTill : Parser s a -> Parser s end -> Parser s (List a)
-manyTill p end =
+manyTill p end_ =
     let
         accumulate acc state stream =
-            case app end state stream of
+            case app end_ state stream of
                 ( rstate, rstream, Ok _ ) ->
                     ( rstate, rstream, Ok (List.reverse acc) )
 
