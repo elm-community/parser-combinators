@@ -1,4 +1,19 @@
-module Scheme exposing (E(..), bool, char, comment, expr, float, formatError, identifier, int, list, parse, program, quasiquote, quote, str, unquote, unquoteSplice, vector)
+module Scheme exposing
+    ( parse, test
+    , E(..), bool, char, comment, expr, float, formatError, identifier, int, list, program, quasiquote, quote, str, unquote, unquoteSplice, vector
+    )
+
+{-| An example parser for the Scheme programming language.
+
+To run this example, simply enter the examples and:
+
+1.  run `elm repl`
+2.  type in `import Scheme`
+3.  try it out with `Scheme.test` or `Scheme.parse "(* 12 12 13)"`
+
+@docs parse, test
+
+-}
 
 import Combine exposing (..)
 import Combine.Char exposing (anyChar)
@@ -204,7 +219,7 @@ formatError ms stream =
             location.column + separatorOffset + 2
     in
     "Parse error around line:\n\n"
-        ++ toString location.line
+        ++ String.fromInt location.line
         ++ separator
         ++ location.source
         ++ "\n"
@@ -214,6 +229,18 @@ formatError ms stream =
         ++ String.join expectationSeparator ms
 
 
+{-| Parse simple Scheme-code ...
+
+    import Scheme exposing (parse)
+
+    parse "(* 12 12 13)"
+    -- Ok [EList [EIdentifier "*",EInt 12,EInt 12,EInt 13]]
+
+
+    parse "(* 12 12 13"
+    -- Err ("Parse error around line:\n\n0|> (* 12 12 13\n    ^\nI expected one of the following:\n\n  * expected end of input")
+
+-}
 parse : String -> Result String (List E)
 parse s =
     case Combine.parse program s of
@@ -222,3 +249,21 @@ parse s =
 
         Err ( _, stream, ms ) ->
             Err <| formatError ms stream
+
+
+{-| Run the following example ...
+
+    import Scheme exposing (test)
+
+    test
+    -- Ok [EList [EIdentifier "define",EList [EIdentifier "derivative",EIdentifier "f",EIdentifier "dx"],EList [EIdentifier "lambda",EList [EIdentifier "x"],EList [EIdentifier "/",EList [EIdentifier "-",EList [EIdentifier "f",EList [EIdentifier "+",EIdentifier "x",EIdentifier "dx"]],EList [EIdentifier "f",EIdentifier "x"]],EIdentifier "dx"]]]]
+
+-}
+test : Result String (List E)
+test =
+    parse """
+  (define (derivative f dx)
+  (lambda (x)
+    (/ (- (f (+ x dx)) (f x))
+       dx)))
+  """

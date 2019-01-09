@@ -1,4 +1,19 @@
-module Python exposing (CompoundStatement(..), Expression(..), Indentation, Statement(..), addop, andExpr, andop, app, arithExpr, assertStmt, assignStmt, assignop, atom, attribute, block, blockStmt, bool, breakStmt, cmpExpr, cmpop, commaSep, comment, compoundStmt, continueStmt, dedent, delStmt, dict, dictSep, dropWhile, expr, exprList, exprStmt, factor, float, forStmt, formatError, funcStmt, globalStmt, identifier, importAs, importFromStmt, importStmt, indent, indentation, initIndentation, int, keyword, list, listSep, mulop, notExpr, orop, parse, passStmt, printStmt, program, raiseStmt, returnStmt, set, simpleStmt, spaces, stmt, str, term, test, token, tuple, whileStmt, whitespace, withStmt)
+module Python exposing
+    ( parse, test
+    , CompoundStatement(..), Expression(..), Indentation, Statement(..), addop, andExpr, andop, app, arithExpr, assertStmt, assignStmt, assignop, atom, attribute, block, blockStmt, bool, breakStmt, cmpExpr, cmpop, commaSep, comment, compoundStmt, continueStmt, dedent, delStmt, dict, dictSep, dropWhile, expr, exprList, exprStmt, factor, float, forStmt, formatError, funcStmt, globalStmt, identifier, importAs, importFromStmt, importStmt, indent, indentation, initIndentation, int, keyword, list, listSep, mulop, notExpr, orop, passStmt, printStmt, program, raiseStmt, returnStmt, set, simpleStmt, spaces, stmt, str, term, token, tuple, whileStmt, whitespace, withStmt
+    )
+
+{-| An example parser for the Python programming language.
+
+To run this example, simply enter the examples and:
+
+1.  run `elm repl`
+2.  type in `import Python`
+3.  try it out with `Python.test` or `Python.parse "a = 12 * 33"`
+
+@docs parse, test
+
+-}
 
 import Combine exposing (..)
 import Combine.Char exposing (..)
@@ -200,7 +215,7 @@ dict =
         \() ->
             expr
                 |> ignore dictSep
-                |> map (,)
+                |> map Tuple.pair
                 |> andMap expr
                 |> sepBy listSep
                 |> brackets
@@ -369,7 +384,7 @@ raiseStmt =
 importAs : Parser s (List ( Expression, Maybe Expression ))
 importAs =
     or attribute identifier
-        |> map (,)
+        |> map Tuple.pair
         |> andMap (whitespace |> ignore (keyword "as") |> keep identifier |> maybe)
         |> sepBy commaSep
 
@@ -429,14 +444,14 @@ indentation p =
 
                 validate s =
                     let
-                        indent =
+                        indent_ =
                             String.length s
                     in
-                    if indent == current then
+                    if indent_ == current then
                         succeed ()
 
                     else
-                        fail ("expected " ++ toString current ++ " spaces of indentation")
+                        fail ("expected " ++ String.fromInt current ++ " spaces of indentation")
             in
             spaces |> andThen validate
     in
@@ -452,7 +467,7 @@ indent =
                     withState <|
                         \stack ->
                             let
-                                indent =
+                                indent_ =
                                     String.length s
                             in
                             case stack of
@@ -460,8 +475,8 @@ indent =
                                     fail "negative indentation"
 
                                 current :: _ ->
-                                    if indent > current then
-                                        putState (indent :: stack)
+                                    if indent_ > current then
+                                        putState (indent_ :: stack)
 
                                     else
                                         fail "expected indentation"
@@ -518,7 +533,7 @@ simpleStmt =
     lazy <|
         \() ->
             let
-                stmt =
+                stmt_ =
                     choice
                         [ assertStmt
                         , globalStmt
@@ -535,7 +550,7 @@ simpleStmt =
                         , exprStmt
                         ]
             in
-            sepBy (string ";" |> ignore whitespace) stmt
+            sepBy (string ";" |> ignore whitespace) stmt_
                 |> ignore (or (skip eol) end)
                 |> map CSimple
                 |> indentation
@@ -632,6 +647,17 @@ formatError ms stream =
         ++ String.join expectationSeparator ms
 
 
+{-| Parse simple Python-code ...
+
+    import Python exposing (parse)
+
+    parse "a = 33 * 12"
+    -- Ok [CSimple [SAssign (EAssign (EIdentifier "a") (EMul (EInt 33) (EInt 12)))]]
+
+    parse " = 33 * test(22)"
+    -- Err ("Parse error around line:\n\n0|  = 33 * test(22)\n   ^\nI expected one of the following:\n\n  * expected end of input")
+
+-}
 parse : String -> Result String (List CompoundStatement)
 parse s =
     case Combine.runParser program initIndentation s of
@@ -642,6 +668,14 @@ parse s =
             Err <| formatError ms stream
 
 
+{-| Run the following example ...
+
+    import Python exposing (test)
+
+    test
+    -- Ok [CSimple [SImport [(EIdentifier "os",Nothing)]],CSimple [],CSimple [SAssign (EAssign (EIdentifier "a") (EAssign (EIdentifier "b") (EInt 1)))],CSimple [],CFunc (EIdentifier "rel") [EIdentifier "p"] [CSimple [SReturn (Just (EApp (EAttribute (EIdentifier "os") (EAttribute (EIdentifier "path") (EIdentifier "join"))) [EApp (EAttribute (EIdentifier "os") (EAttribute (EIdentifier "path") (EIdentifier "dirname"))) [EIdentifier "__file__"],EIdentifier "p"]))]],CSimple [],CFunc (EIdentifier "f") [EIdentifier "a",EIdentifier "b"] [CSimple [SReturn (Just (EAdd (EIdentifier "a") (EIdentifier "b")))]],CSimple [],CWith (EApp (EIdentifier "open") [EApp (EIdentifier "rel") [EString "Python.elm"]]) (Just (EIdentifier "f")) [CFor (EIdentifier "line") (EIdentifier "f") [CSimple [SPrint [EIdentifier "f"]]]]]
+
+-}
 test : Result String (List CompoundStatement)
 test =
     parse """import os

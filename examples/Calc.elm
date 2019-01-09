@@ -61,8 +61,11 @@ factor =
 
     import Calc exposing (calc)
 
-    calc "123+1"
-    -- 123
+    calc "22*2+(3+18)"
+    -- Ok 65
+
+    calc "33 ** 12"
+    -- Err ("parse error: [ \"expected end of input\" ] , { data: 33 ** 12, input: ** 12, position: 3 }")
 
 -}
 calc : String -> Result String Int
