@@ -2,6 +2,12 @@ module Calc exposing (calc)
 
 {-| An example parser that computes arithmetic expressions.
 
+To run this example, simply enter the examples and:
+
+1.  run `elm repl`
+2.  type in `import Calc exposing (calc)`
+3.  try out some expressions like `calc "22*2+(3+18)"`
+
 @docs calc
 
 -}
@@ -52,6 +58,12 @@ factor =
 
 
 {-| Compute the result of an expression.
+
+    import Calc exposing (calc)
+
+    calc "123+1"
+    -- 123
+
 -}
 calc : String -> Result String Int
 calc s =
