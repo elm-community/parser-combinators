@@ -204,15 +204,8 @@ Here's how you would implement a greedy version of `manyTill` using
 
 -}
 app : Parser state res -> state -> InputStream -> ParseContext state res
-app p =
-    case p of
-        Parser inner ->
-            inner
-
-
-
---        RecursiveParser t ->
---            L.force t
+app (Parser inner) =
+    inner
 
 
 {-| Parse a string. See `runParser` if your parser needs to manage
@@ -292,39 +285,13 @@ runParser p st s =
             Err ( state, stream, ms )
 
 
-{-| Defer running a parser until it's actually required. Use this
-function to avoid "bad-recursion" errors.
+{-| Unfortunatelly this is not a real lazy function anymore, since this
+functionality is not accessable anymore by ordinary developers. Use this
+function only to avoid "bad-recursion" errors or use the following example
+snippet in your code to circumvent this problem:
 
-    type Expression
-      = ETerm String
-      | EList (List E)
-
-    name : Parser s String
-    name = whitespace |> keep (regex "[a-zA-Z]+") |> ignore whitespace
-
-    term : Parser s Expression
-    term = andMap name ETerm
-
-    list : Parser s Expression
-    list =
-      let
-        -- helper is itself a function so we avoid the case where the
-        -- value `list` tries to apply itself in its definition.
-        helper () =
-          between (string "(") (string ")") (many (or term list))
-          |> andMap EList
-      in
-        -- lazy defers calling helper until it's actually needed.
-        lazy helper
-
-    parse list ""
-    -- Err ["expected \"(\""]
-
-    parse list "()"
-    -- Ok (EList [])
-
-    parse list "(a (b c))"
-    -- Ok (EList [ETerm "a", EList [ETerm "b", ETerm "c"]])
+    recursion x =
+        \() -> recursion x
 
 -}
 lazy : (() -> Parser s a) -> Parser s a

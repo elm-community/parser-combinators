@@ -622,7 +622,7 @@ formatError ms stream =
             location.column + separatorOffset + 2
     in
     "Parse error around line:\n\n"
-        ++ toString location.line
+        ++ String.fromInt location.line
         ++ separator
         ++ location.source
         ++ "\n"

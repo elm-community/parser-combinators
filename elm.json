@@ -4,6 +4,9 @@
     "summary": "Port of the community parser combinator to elm 0.19",
     "license": "BSD-3-Clause",
     "version": "2.0.0",
+    "source-directories": [
+        "src"
+    ],
     "exposed-modules": [
         "Combine",
         "Combine.Char",

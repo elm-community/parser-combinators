@@ -15,20 +15,6 @@ import Combine.Char
 import String
 
 
-
-{-
-   unwrap : (String -> Maybe res) -> String -> res
-   unwrap f s =
-       case f s of
-           Just res ->
-               onsuccess  res
-
-           Nothing ->
-               onerror "impossible state in Combine.Num.unwrap: "
-
--}
-
-
 {-| Parse a numeric sign, returning `1` for positive numbers and `-1`
 for negative numbers.
 -}
@@ -54,19 +40,28 @@ digit =
 
 {-| Parse an integer.
 -}
-int : Parser s (Maybe Int)
+int : Parser s Int
 int =
     regex "-?(?:0|[1-9]\\d*)"
         |> map String.toInt
-
-
-
---|> onerror "expected an integer"
+        |> andThen unwrap
+        |> onerror "expected an float"
 
 
 {-| Parse a float.
 -}
-float : Parser s (Maybe Float)
+float : Parser s Float
 float =
     regex "-?(?:0|[1-9]\\d*)\\.\\d+"
         |> map String.toFloat
+        |> andThen unwrap
+        |> onerror "expected an float"
+
+
+unwrap value =
+    case value of
+        Just v ->
+            succeed v
+
+        Nothing ->
+            fail "impossible state in Combine.Num.unwrap"

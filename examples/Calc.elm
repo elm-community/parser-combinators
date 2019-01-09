@@ -60,4 +60,16 @@ calc s =
             Ok n
 
         Err ( _, stream, ms ) ->
-            Err ("parse error: " ++ toString ms ++ ", " ++ toString stream)
+            Err
+                ("parse error: "
+                    ++ "[ \""
+                    ++ (ms |> List.intersperse "\", \"" |> String.concat)
+                    ++ "\" ] , "
+                    ++ "{ data: "
+                    ++ stream.data
+                    ++ ", input: "
+                    ++ stream.input
+                    ++ ", position: "
+                    ++ String.fromInt stream.position
+                    ++ " }"
+                )
