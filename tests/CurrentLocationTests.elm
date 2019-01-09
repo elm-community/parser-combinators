@@ -59,7 +59,7 @@ noNegativeValuesForColumn =
                         0
 
                     else
-                        i % String.length s
+                        modBy (String.length s) i
             in
             case
                 Combine.parse
@@ -85,7 +85,7 @@ noNegativeValuesForLine =
                         0
 
                     else
-                        i % String.length s
+                        modBy (String.length s) i
             in
             case
                 Combine.parse

@@ -634,7 +634,7 @@ string s =
                 ( state, { stream | input = rem, position = pos }, Ok s )
 
             else
-                ( state, stream, Err [ "expected " ++ s ] )
+                ( state, stream, Err [ "expected \"" ++ s ++ "\"" ] )
 
 
 {-| Parse a Regex match.
