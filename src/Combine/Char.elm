@@ -15,7 +15,7 @@ much faster.
 -}
 
 import Char
-import Combine exposing (Parser, onerror, onsuccess, or, primitive, regex, string)
+import Combine exposing (Parser, onerror, onsuccess, or, primitive, string)
 import Flip exposing (flip)
 import String
 

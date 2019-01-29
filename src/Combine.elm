@@ -71,7 +71,7 @@ into concrete Elm values.
 -}
 
 import Flip exposing (flip)
-import Regex exposing (Regex)
+import Regex
 import String
 
 

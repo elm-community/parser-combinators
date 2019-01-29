@@ -10,7 +10,7 @@ module Combine.Num exposing (sign, digit, int, float)
 -}
 
 import Char
-import Combine exposing (..)
+import Combine exposing (Parser, andThen, fail, map, onerror, onsuccess, optional, or, regex, string, succeed)
 import Combine.Char
 import String
 
@@ -58,6 +58,7 @@ float =
         |> onerror "expected an float"
 
 
+unwrap : Maybe v -> Parser s v
 unwrap value =
     case value of
         Just v ->
