@@ -2,7 +2,7 @@ module Combine exposing
     ( Parser, InputStream, ParseLocation, ParseContext, ParseResult, ParseError, ParseOk
     , parse, runParser
     , primitive, app, lazy
-    , fail, succeed, string, regex, end, whitespace, whitespace1
+    , fail, succeed, string, regex, regexWith, regexWithSub, end, whitespace, whitespace1
     , map, onsuccess, mapError, onerror
     , andThen, andMap, sequence
     , lookAhead, while, or, choice, optional, maybe, many, many1, manyTill, sepBy, sepBy1, sepEndBy, sepEndBy1, skip, skipMany, skipMany1, chainl, chainr, count, between, parens, braces, brackets, keep, ignore
@@ -43,7 +43,7 @@ into concrete Elm values.
 
 ## Parsers
 
-@docs fail, succeed, string, regex, end, whitespace, whitespace1
+@docs fail, succeed, string, regex, regexWith, regexWithSub, end, whitespace, whitespace1
 
 
 ## Combinators
@@ -648,7 +648,59 @@ every pattern unless one already exists.
 
 -}
 regex : String -> Parser s String
-regex pat =
+regex =
+    regexRun Regex.fromString .match
+
+
+{-| Parse a Regex match.
+
+Since, Regex now also has support for more parameters, this option was
+included into this package. Call `regexWith` with two additional parameters:
+`caseInsensitive` and `multiline`, which allow you to tweak your expression.
+The rest is as follows. Regular expressions must match from the beginning
+of the input and their subgroups are ignored. A `^` is added implicitly to
+the beginning of every pattern unless one already exists.
+
+    parse (regexWith True False "a+") "aaaAAaAab"
+    -- Ok "aaaAAaAa"
+
+-}
+regexWith : Bool -> Bool -> String -> Parser s String
+regexWith caseInsensitive multiline =
+    regexRun
+        (Regex.fromStringWith
+            { caseInsensitive = caseInsensitive
+            , multiline = multiline
+            }
+        )
+        .match
+
+
+{-| Parse a Regex match.
+
+Similar to `regexWith`, but a tuple is returned, with a list of additional
+submatches.
+The rest is as follows. Regular expressions must match from the beginning
+of the input and their subgroups are ignored. A `^` is added implicitly to
+the beginning of every pattern unless one already exists.
+
+    parse (regexWithSub True False "a+") "aaaAAaAab"
+    -- Ok ("aaaAAaAa", [])
+
+-}
+regexWithSub : Bool -> Bool -> String -> Parser s ( String, List (Maybe String) )
+regexWithSub caseInsensitive multiline =
+    regexRun
+        (Regex.fromStringWith
+            { caseInsensitive = caseInsensitive
+            , multiline = multiline
+            }
+        )
+        (\m -> ( m.match, m.submatches ))
+
+
+regexRun : (String -> Maybe Regex.Regex) -> (Regex.Match -> out) -> String -> Parser s out
+regexRun input output pat =
     let
         pattern =
             if String.startsWith "^" pat then
@@ -659,7 +711,7 @@ regex pat =
     in
     Parser <|
         \state stream ->
-            case Regex.findAtMost 1 (Regex.fromString pattern |> Maybe.withDefault Regex.never) stream.input of
+            case Regex.findAtMost 1 (input pattern |> Maybe.withDefault Regex.never) stream.input of
                 [ match ] ->
                     let
                         len =
@@ -671,7 +723,7 @@ regex pat =
                         pos =
                             stream.position + len
                     in
-                    ( state, { stream | input = rem, position = pos }, Ok match.match )
+                    ( state, { stream | input = rem, position = pos }, Ok (output match) )
 
                 _ ->
                     ( state, stream, Err [ "expected input matching Regexp /" ++ pattern ++ "/" ] )
