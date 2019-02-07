@@ -2,7 +2,7 @@ module Combine exposing
     ( Parser, InputStream, ParseLocation, ParseContext, ParseResult, ParseError, ParseOk
     , parse, runParser
     , primitive, app, lazy
-    , fail, succeed, string, regex, regexWith, regexWithSub, end, whitespace, whitespace1
+    , fail, succeed, string, regex, regexSub, regexWith, regexWithSub, end, whitespace, whitespace1
     , map, onsuccess, mapError, onerror
     , andThen, andMap, sequence
     , lookAhead, while, or, choice, optional, maybe, many, many1, manyTill, sepBy, sepBy1, sepEndBy, sepEndBy1, skip, skipMany, skipMany1, chainl, chainr, count, between, parens, braces, brackets, keep, ignore
@@ -43,7 +43,7 @@ into concrete Elm values.
 
 ## Parsers
 
-@docs fail, succeed, string, regex, regexWith, regexWithSub, end, whitespace, whitespace1
+@docs fail, succeed, string, regex, regexSub, regexWith, regexWithSub, end, whitespace, whitespace1
 
 
 ## Combinators
@@ -649,7 +649,23 @@ every pattern unless one already exists.
 -}
 regex : String -> Parser s String
 regex =
-    regexRun Regex.fromString .match
+    regexer Regex.fromString .match >> Parser
+
+
+{-| Parse a Regex match.
+
+Same as regex, but returns also submatches as the second parameter in
+the result tuple.
+
+    parse (regexSub "a+") "aaaaab"
+    -- Ok ("aaaaa", [])
+
+-}
+regexSub : String -> Parser s ( String, List (Maybe String) )
+regexSub =
+    regexer Regex.fromString
+        (\m -> ( m.match, m.submatches ))
+        >> Parser
 
 
 {-| Parse a Regex match.
@@ -667,13 +683,14 @@ the beginning of every pattern unless one already exists.
 -}
 regexWith : Bool -> Bool -> String -> Parser s String
 regexWith caseInsensitive multiline =
-    regexRun
+    regexer
         (Regex.fromStringWith
             { caseInsensitive = caseInsensitive
             , multiline = multiline
             }
         )
         .match
+        >> Parser
 
 
 {-| Parse a Regex match.
@@ -690,17 +707,22 @@ the beginning of every pattern unless one already exists.
 -}
 regexWithSub : Bool -> Bool -> String -> Parser s ( String, List (Maybe String) )
 regexWithSub caseInsensitive multiline =
-    regexRun
+    regexer
         (Regex.fromStringWith
             { caseInsensitive = caseInsensitive
             , multiline = multiline
             }
         )
         (\m -> ( m.match, m.submatches ))
+        >> Parser
 
 
-regexRun : (String -> Maybe Regex.Regex) -> (Regex.Match -> out) -> String -> Parser s out
-regexRun input output pat =
+regexer :
+    (String -> Maybe Regex.Regex)
+    -> (Regex.Match -> res)
+    -> String
+    -> (state -> InputStream -> ( state, InputStream, ParseResult res ))
+regexer input output pat state stream =
     let
         pattern =
             if String.startsWith "^" pat then
@@ -709,24 +731,22 @@ regexRun input output pat =
             else
                 "^" ++ pat
     in
-    Parser <|
-        \state stream ->
-            case Regex.findAtMost 1 (input pattern |> Maybe.withDefault Regex.never) stream.input of
-                [ match ] ->
-                    let
-                        len =
-                            String.length match.match
+    case Regex.findAtMost 1 (input pattern |> Maybe.withDefault Regex.never) stream.input of
+        [ match ] ->
+            let
+                len =
+                    String.length match.match
 
-                        rem =
-                            String.dropLeft len stream.input
+                rem =
+                    String.dropLeft len stream.input
 
-                        pos =
-                            stream.position + len
-                    in
-                    ( state, { stream | input = rem, position = pos }, Ok (output match) )
+                pos =
+                    stream.position + len
+            in
+            ( state, { stream | input = rem, position = pos }, Ok (output match) )
 
-                _ ->
-                    ( state, stream, Err [ "expected input matching Regexp /" ++ pattern ++ "/" ] )
+        _ ->
+            ( state, stream, Err [ "expected input matching Regexp /" ++ pattern ++ "/" ] )
 
 
 {-| Consume input while the predicate matches.
