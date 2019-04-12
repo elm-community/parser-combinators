@@ -45,7 +45,7 @@ int =
     regex "-?(?:0|[1-9]\\d*)"
         |> map String.toInt
         |> andThen unwrap
-        |> onerror "expected an float"
+        |> onerror "expected an int"
 
 
 {-| Parse a float.
@@ -55,7 +55,7 @@ float =
     regex "-?(?:0|[1-9]\\d*)\\.\\d+"
         |> map String.toFloat
         |> andThen unwrap
-        |> onerror "expected an float"
+        |> onerror "expected a float"
 
 
 unwrap : Maybe v -> Parser s v

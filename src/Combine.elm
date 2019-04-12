@@ -1157,7 +1157,7 @@ brackets =
 -}
 whitespace : Parser s String
 whitespace =
-    regex "\\s*" |> onerror "whitespace"
+    regex "\\s*" |> onerror "optional whitespace"
 
 
 {-| Parse one or more whitespace characters.
