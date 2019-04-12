@@ -119,28 +119,28 @@ noneOf cs =
 -}
 space : Parser s Char
 space =
-    satisfy ((==) ' ') |> onerror "expected space"
+    satisfy ((==) ' ') |> onerror "expected a space"
 
 
 {-| Parse a `\t` character.
 -}
 tab : Parser s Char
 tab =
-    satisfy ((==) '\t') |> onerror "expected tab"
+    satisfy ((==) '\t') |> onerror "expected a tab"
 
 
 {-| Parse a `\n` character.
 -}
 newline : Parser s Char
 newline =
-    satisfy ((==) '\n') |> onerror "expected newline"
+    satisfy ((==) '\n') |> onerror "expected a newline"
 
 
 {-| Parse a `\r\n` sequence, returning a `\n` character.
 -}
 crlf : Parser s Char
 crlf =
-    string "\u{000D}\n" |> onsuccess '\n' |> onerror "expected crlf"
+    string "\u{000D}\n" |> onsuccess '\n' |> onerror "expected CRLF"
 
 
 {-| Parse an end of line character or sequence, returning a `\n` character.
