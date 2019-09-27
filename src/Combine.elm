@@ -6,7 +6,7 @@ module Combine exposing
     , map, onsuccess, mapError, onerror
     , andThen, andMap, sequence
     , lookAhead, while, or, choice, optional, maybe, many, many1, manyTill, sepBy, sepBy1, sepEndBy, sepEndBy1, skip, skipMany, skipMany1, chainl, chainr, count, between, parens, braces, brackets, keep, ignore
-    , withState, putState, modifyState, withLocation, withLine, withColumn, currentLocation, currentSourceLine, currentLine, currentColumn, modifyStream
+    , withState, putState, modifyState, withLocation, withLine, withColumn, withSourceLine, currentLocation, currentSourceLine, currentLine, currentColumn, modifyStream
     )
 
 {-| This library provides facilities for parsing structured text data
@@ -66,7 +66,7 @@ into concrete Elm values.
 
 ### State Combinators
 
-@docs withState, putState, modifyState, withLocation, withLine, withColumn, currentLocation, currentSourceLine, currentLine, currentColumn, modifyStream
+@docs withState, putState, modifyState, withLocation, withLine, withColumn, withSourceLine, currentLocation, currentSourceLine, currentLine, currentColumn, modifyStream
 
 -}
 
@@ -375,6 +375,22 @@ withColumn f =
     Parser <|
         \state stream ->
             app (f <| currentColumn stream) state stream
+
+
+{-| Get the current InputStream and pipe it into a parser,
+only for debugging purposes ...
+-}
+withSourceLine : (String -> Parser s a) -> Parser s a
+withSourceLine f =
+    Parser <|
+        \state stream ->
+            app
+                (currentSourceLine stream
+                    |> String.dropLeft (currentColumn stream)
+                    |> f
+                )
+                state
+                stream
 
 
 {-| Get the current `(line, column)` in the input stream.
