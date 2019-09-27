@@ -384,13 +384,7 @@ withSourceLine : (String -> Parser s a) -> Parser s a
 withSourceLine f =
     Parser <|
         \state stream ->
-            app
-                (currentSourceLine stream
-                    |> String.dropLeft (currentColumn stream)
-                    |> f
-                )
-                state
-                stream
+            app (f <| currentSourceLine stream) state stream
 
 
 {-| Get the current `(line, column)` in the input stream.

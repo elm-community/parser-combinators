@@ -19,14 +19,22 @@ import Combine exposing (..)
 debug : String -> Parser s a -> Parser s a
 debug log p =
     withLine
-        (\x ->
+        (\y ->
             withColumn
-                (\y ->
+                (\x ->
                     withSourceLine
                         (\s ->
                             let
                                 output =
-                                    Debug.log log ( x, y, s )
+                                    Debug.log log
+                                        ( x
+                                        , y
+                                        , String.slice 0 x s
+                                            ++ "["
+                                            ++ String.slice x (x + 1) s
+                                            ++ "]"
+                                            ++ String.slice (x + 1) -1 s
+                                        )
                             in
                             p
                         )
