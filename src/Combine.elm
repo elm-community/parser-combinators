@@ -6,7 +6,7 @@ module Combine exposing
     , map, onsuccess, mapError, onerror
     , andThen, andMap, sequence
     , lookAhead, while, or, choice, optional, maybe, many, many1, manyTill, sepBy, sepBy1, sepEndBy, sepEndBy1, skip, skipMany, skipMany1, chainl, chainr, count, between, parens, braces, brackets, keep, ignore
-    , withState, putState, modifyState, withLocation, withLine, withColumn, withSourceLine, currentLocation, currentSourceLine, currentLine, currentColumn, modifyStream
+    , withState, putState, modifyState, withLocation, withLine, withColumn, withSourceLine, currentLocation, currentSourceLine, currentLine, currentColumn, currentStream, modifyStream
     )
 
 {-| This library provides facilities for parsing structured text data
@@ -66,7 +66,7 @@ into concrete Elm values.
 
 ### State Combinators
 
-@docs withState, putState, modifyState, withLocation, withLine, withColumn, withSourceLine, currentLocation, currentSourceLine, currentLine, currentColumn, modifyStream
+@docs withState, putState, modifyState, withLocation, withLine, withColumn, withSourceLine, currentLocation, currentSourceLine, currentLine, currentColumn, currentStream, modifyStream
 
 -}
 
@@ -436,6 +436,13 @@ currentLine =
 currentColumn : InputStream -> Int
 currentColumn =
     currentLocation >> .column
+
+
+{-| Get the current string stream. That might be useful for applying memorization.
+-}
+currentStream : InputStream -> String
+currentStream =
+    .input
 
 
 {-| Modify the parser's InputStream.
