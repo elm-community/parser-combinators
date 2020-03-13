@@ -6,7 +6,7 @@ module Combine exposing
     , map, onsuccess, mapError, onerror
     , andThen, andMap, sequence
     , lookAhead, while, or, choice, optional, maybe, many, many1, manyTill, sepBy, sepBy1, sepEndBy, sepEndBy1, skip, skipMany, skipMany1, chainl, chainr, count, between, parens, braces, brackets, keep, ignore
-    , withState, putState, modifyState, withLocation, withLine, withColumn, withSourceLine, currentLocation, currentSourceLine, currentLine, currentColumn, currentStream, modifyStream
+    , withState, putState, modifyState, withLocation, withLine, withColumn, withSourceLine, currentLocation, currentSourceLine, currentLine, currentColumn, currentStream, modifyInput, modifyPosition
     )
 
 {-| This library provides facilities for parsing structured text data
@@ -66,7 +66,7 @@ into concrete Elm values.
 
 ### State Combinators
 
-@docs withState, putState, modifyState, withLocation, withLine, withColumn, withSourceLine, currentLocation, currentSourceLine, currentLine, currentColumn, currentStream, modifyStream
+@docs withState, putState, modifyState, withLocation, withLine, withColumn, withSourceLine, currentLocation, currentSourceLine, currentLine, currentColumn, currentStream, modifyInput, modifyPosition
 
 -}
 
@@ -445,13 +445,22 @@ currentStream =
     .input
 
 
-{-| Modify the parser's InputStream.
+{-| Modify the parser's InputStream input (String).
 -}
-modifyStream : (String -> String) -> Parser s ()
-modifyStream f =
+modifyInput : (String -> String) -> Parser s ()
+modifyInput f =
     Parser <|
         \state stream ->
             app (succeed ()) state { stream | input = f stream.input }
+
+
+{-| Modify the parser's InputStream position (Int).
+-}
+modifyPosition : (Int -> Int) -> Parser s ()
+modifyPosition f =
+    Parser <|
+        \state stream ->
+            app (succeed ()) state { stream | position = f stream.position }
 
 
 
