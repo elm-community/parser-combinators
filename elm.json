@@ -3,7 +3,7 @@
     "name": "andre-dietrich/parser-combinators",
     "summary": "Port of the community parser combinator to elm 0.19",
     "license": "BSD-3-Clause",
-    "version": "3.2.0",
+    "version": "4.0.0",
     "exposed-modules": [
         "Combine",
         "Combine.Char",
