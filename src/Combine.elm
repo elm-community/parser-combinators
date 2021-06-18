@@ -5,7 +5,7 @@ module Combine exposing
     , fail, succeed, string, regex, regexSub, regexWith, regexWithSub, end, whitespace, whitespace1
     , map, onsuccess, mapError, onerror
     , andThen, andMap, sequence
-    , lookAhead, while, or, choice, optional, maybe, many, many1, manyTill, sepBy, sepBy1, sepEndBy, sepEndBy1, skip, skipMany, skipMany1, chainl, chainr, count, between, parens, braces, brackets, keep, ignore
+    , lookAhead, while, or, choice, optional, maybe, many, many1, manyTill, many1Till, sepBy, sepBy1, sepEndBy, sepEndBy1, skip, skipMany, skipMany1, chainl, chainr, count, between, parens, braces, brackets, keep, ignore
     , withState, putState, modifyState, withLocation, withLine, withColumn, withSourceLine, currentLocation, currentSourceLine, currentLine, currentColumn, currentStream, modifyInput, modifyPosition
     )
 
@@ -61,7 +61,7 @@ into concrete Elm values.
 
 ### Parser Combinators
 
-@docs lookAhead, while, or, choice, optional, maybe, many, many1, manyTill, sepBy, sepBy1, sepEndBy, sepEndBy1, skip, skipMany, skipMany1, chainl, chainr, count, between, parens, braces, brackets, keep, ignore
+@docs lookAhead, while, or, choice, optional, maybe, many, many1, manyTill, many1Till, sepBy, sepBy1, sepEndBy, sepEndBy1, skip, skipMany, skipMany1, chainl, chainr, count, between, parens, braces, brackets, keep, ignore
 
 
 ### State Combinators
@@ -1000,6 +1000,26 @@ manyTill p end_ =
                             ( estate, estream, Err ms )
     in
     Parser (accumulate [])
+
+
+{-| Apply the first parser one or more times until second parser
+succeeds. On success, the list of the first parser's results is returned.
+
+    string "<!--" |> keep (many1Till anyChar (string "-->"))
+
+-}
+many1Till : Parser s a -> Parser s end -> Parser s (List a)
+many1Till p =
+    manyTill p
+        >> andThen
+            (\result ->
+                case result of
+                    [] ->
+                        fail "not enough results"
+
+                    _ ->
+                        succeed result
+            )
 
 
 {-| Parser zero or more occurences of one parser separated by another.

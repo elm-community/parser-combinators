@@ -1,9 +1,25 @@
-module Parsers exposing (manyTillSuite, sepEndBy1Suite, sepEndBySuite, sequenceSuite, successful)
+module Parsers exposing (manyTillSuite, sepEndBy1Suite, sepEndBySuite, sequenceSuite)
 
 --import Calc exposing (calc)
 
-import Combine exposing (..)
-import Combine.Char exposing (..)
+import Combine
+    exposing
+        ( Parser
+        , keep
+        , many
+        , manyTill
+        , parse
+        , sepEndBy
+        , sepEndBy1
+        , sequence
+        , string
+        )
+import Combine.Char
+    exposing
+        ( anyChar
+        , eol
+        , space
+        )
 import Expect
 import String
 import Test exposing (Test, describe, test)

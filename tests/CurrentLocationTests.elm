@@ -1,10 +1,17 @@
 module CurrentLocationTests exposing (entryPoint, noNegativeValuesForColumn, noNegativeValuesForLine, specificLocationTests)
 
-import Combine exposing (..)
+import Combine
 import Combine.Char
 import Expect
 import Fuzz
-import Test exposing (..)
+import Test
+    exposing
+        ( Test
+        , describe
+        , fuzz
+        , fuzz2
+        , test
+        )
 
 
 entryPoint : Test
@@ -64,7 +71,7 @@ noNegativeValuesForColumn =
             case
                 Combine.parse
                     (Combine.count c Combine.Char.anyChar
-                        |> keep (Combine.withColumn Combine.succeed)
+                        |> Combine.keep (Combine.withColumn Combine.succeed)
                     )
                     s
             of
@@ -90,7 +97,7 @@ noNegativeValuesForLine =
             case
                 Combine.parse
                     (Combine.count c Combine.Char.anyChar
-                        |> keep (Combine.withLine Combine.succeed)
+                        |> Combine.keep (Combine.withLine Combine.succeed)
                     )
                     s
             of
