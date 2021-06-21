@@ -1,8 +1,25 @@
-module Parsers exposing (..)
+module Parsers exposing (manyTillSuite, sepEndBy1Suite, sepEndBySuite, sequenceSuite)
 
-import Calc exposing (calc)
-import Combine exposing (..)
-import Combine.Char exposing (..)
+--import Calc exposing (calc)
+
+import Combine
+    exposing
+        ( Parser
+        , keep
+        , many
+        , manyTill
+        , parse
+        , sepEndBy
+        , sepEndBy1
+        , sequence
+        , string
+        )
+import Combine.Char
+    exposing
+        ( anyChar
+        , eol
+        , space
+        )
 import Expect
 import String
 import Test exposing (Test, describe, test)
@@ -20,34 +37,38 @@ successful desc p s r =
                     Expect.fail <| String.join ", " ms
 
 
-calcSuite : Test
-calcSuite =
-    let
-        equiv s x () =
-            Expect.equal (calc s) (Ok x)
-    in
-    describe "calc example tests"
-        [ test "Atoms" (equiv "1" 1)
-        , test "Atoms 2" (equiv "-1" -1)
-        , test "Parenthesized atoms" (equiv "(1)" 1)
-        , test "Addition" (equiv "1 + 1" 2)
-        , test "Subtraction" (equiv "1 - 1" 0)
-        , test "Multiplication" (equiv "1 * 1" 1)
-        , test "Division" (equiv "1 / 1" 1)
-        , test "Precedence 1" (equiv "1 + 2 * 3" 7)
-        , test "Precedence 2" (equiv "1 + 2 * 3 * 2" 13)
-        , test "Parenthesized precedence" (equiv "(1 + 2) * 3 * 2" 18)
-        ]
+
+{-
+   calcSuite : Test
+   calcSuite =
+       let
+           equiv s x () =
+               Expect.equal (calc s) (Ok x)
+       in
+       describe "calc example tests"
+           [ test "Atoms" (equiv "1" 1)
+           , test "Atoms 2" (equiv "-1" -1)
+           , test "Parenthesized atoms" (equiv "(1)" 1)
+           , test "Addition" (equiv "1 + 1" 2)
+           , test "Subtraction" (equiv "1 - 1" 0)
+           , test "Multiplication" (equiv "1 * 1" 1)
+           , test "Division" (equiv "1 / 1" 1)
+           , test "Precedence 1" (equiv "1 + 2 * 3" 7)
+           , test "Precedence 2" (equiv "1 + 2 * 3 * 2" 13)
+           , test "Parenthesized precedence" (equiv "(1 + 2) * 3 * 2" 18)
+           ]
+
+-}
 
 
 manyTillSuite : Test
 manyTillSuite =
     let
         comment =
-            string "<!--" *> manyTill anyChar (string "-->")
+            string "<!--" |> keep (manyTill anyChar (string "-->"))
 
         line =
-            manyTill anyChar (many space *> eol)
+            manyTill anyChar (many space |> keep eol)
     in
     describe "manyTill tests"
         [ successful "Example" comment "<!-- test -->" [ ' ', 't', 'e', 's', 't', ' ' ]

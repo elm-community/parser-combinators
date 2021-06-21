@@ -1,4 +1,19 @@
-module Scheme exposing (..)
+module Scheme exposing
+    ( parse, test
+    , E(..), bool, char, comment, expr, float, formatError, identifier, int, list, program, quasiquote, quote, str, unquote, unquoteSplice, vector
+    )
+
+{-| An example parser for the Scheme programming language.
+
+To run this example, simply enter the examples and:
+
+1.  run `elm repl`
+2.  type in `import Scheme`
+3.  try it out with `Scheme.test` or `Scheme.parse "(* 12 12 13)"`
+
+@docs parse, test
+
+-}
 
 import Combine exposing (..)
 import Combine.Char exposing (anyChar)
@@ -24,37 +39,28 @@ type E
 
 comment : Parser s E
 comment =
-    EComment
-        <$> regex ";[^\n]+"
-        <?> "comment"
+    regex ";[^\n]+" |> map EComment |> onerror "comment"
 
 
 bool : Parser s E
 bool =
     let
         boolLiteral =
-            choice
-                [ True <$ string "#t"
-                , False <$ string "#f"
-                ]
+            or
+                (string "#t" |> onsuccess True)
+                (string "#f" |> onsuccess False)
     in
-        EBool
-            <$> boolLiteral
-            <?> "boolean literal"
+    map EBool boolLiteral |> onerror "boolean literal"
 
 
 int : Parser s E
 int =
-    EInt
-        <$> Combine.Num.int
-        <?> "integer literal"
+    map EInt Combine.Num.int |> onerror "integer literal"
 
 
 float : Parser s E
 float =
-    EFloat
-        <$> Combine.Num.float
-        <?> "float literal"
+    map EFloat Combine.Num.float |> onerror "float literal"
 
 
 char : Parser s E
@@ -62,22 +68,22 @@ char =
     let
         charLiteral =
             string "#\\"
-                *> choice
-                    [ ' ' <$ string "space"
-                    , '\n' <$ string "newline"
-                    , anyChar
-                    ]
+                |> keep
+                    (choice
+                        [ string "space" |> onsuccess ' '
+                        , string "newline" |> onsuccess '\n'
+                        , anyChar
+                        ]
+                    )
     in
-        EChar
-            <$> charLiteral
-            <?> "character literal"
+    map EChar charLiteral |> onerror "character literal"
 
 
 str : Parser s E
 str =
-    EString
-        <$> regex "\"(\\\"|[^\"])+\""
-        <?> "string literal"
+    regex "\"(\\\"|[^\"])+\""
+        |> map EString
+        |> onerror "string literal"
 
 
 identifier : Parser s E
@@ -110,49 +116,53 @@ identifier =
         identifierRe =
             initialRe ++ subsequentRe
     in
-        EIdentifier <$> regex identifierRe <?> "identifier"
+    regex identifierRe |> map EIdentifier |> onerror "identifier"
 
 
 list : Parser s E
 list =
-    EList
-        <$> parens (many expr)
-        <?> "list"
+    many expr |> parens |> map EList |> onerror "list"
 
 
 vector : Parser s E
 vector =
-    EVector
-        <$> (string "#(" *> many expr <* string ")")
-        <?> "vector"
+    string "#("
+        |> keep (many expr)
+        |> ignore (string ")")
+        |> map EVector
+        |> onerror "vector"
 
 
 quote : Parser s E
 quote =
-    EQuote
-        <$> (string "'" *> expr)
-        <?> "quoted expression"
+    string "'"
+        |> keep expr
+        |> map EQuote
+        |> onerror "quoted expression"
 
 
 quasiquote : Parser s E
 quasiquote =
-    EQuasiquote
-        <$> (string "`" *> expr)
-        <?> "quasiquoted expression"
+    string "`"
+        |> keep expr
+        |> map EQuasiquote
+        |> onerror "quasiquoted expression"
 
 
 unquote : Parser s E
 unquote =
-    EUnquote
-        <$> (string "," *> expr)
-        <?> "unquoted expression"
+    string ","
+        |> keep expr
+        |> map EUnquote
+        |> onerror "unquoted expression"
 
 
 unquoteSplice : Parser s E
 unquoteSplice =
-    EUnquoteSplice
-        <$> (string ",@" *> expr)
-        <?> "spliced expression"
+    string ",@"
+        |> keep expr
+        |> map EUnquoteSplice
+        |> onerror "spliced expression"
 
 
 expr : Parser s E
@@ -161,22 +171,25 @@ expr =
         \() ->
             let
                 parsers =
-                    [ bool
-                    , float
-                    , int
-                    , char
-                    , str
-                    , identifier
-                    , list
-                    , vector
-                    , quote
-                    , quasiquote
-                    , unquote
-                    , unquoteSplice
-                    , comment
-                    ]
+                    choice
+                        [ bool
+                        , float
+                        , int
+                        , char
+                        , str
+                        , identifier
+                        , list
+                        , vector
+                        , quote
+                        , quasiquote
+                        , unquote
+                        , unquoteSplice
+                        , comment
+                        ]
             in
-                whitespace *> choice parsers <* whitespace
+            whitespace
+                |> keep parsers
+                |> ignore whitespace
 
 
 program : Parser s (List E)
@@ -205,17 +218,29 @@ formatError ms stream =
         padding =
             location.column + separatorOffset + 2
     in
-        "Parse error around line:\n\n"
-            ++ toString location.line
-            ++ separator
-            ++ location.source
-            ++ "\n"
-            ++ String.padLeft padding ' ' "^"
-            ++ "\nI expected one of the following:\n"
-            ++ expectationSeparator
-            ++ String.join expectationSeparator ms
+    "Parse error around line:\n\n"
+        ++ String.fromInt location.line
+        ++ separator
+        ++ location.source
+        ++ "\n"
+        ++ String.padLeft padding ' ' "^"
+        ++ "\nI expected one of the following:\n"
+        ++ expectationSeparator
+        ++ String.join expectationSeparator ms
 
 
+{-| Parse simple Scheme-code ...
+
+    import Scheme exposing (parse)
+
+    parse "(* 12 12 13)"
+    -- Ok [EList [EIdentifier "*",EInt 12,EInt 12,EInt 13]]
+
+
+    parse "(* 12 12 13"
+    -- Err ("Parse error around line:\n\n0|> (* 12 12 13\n    ^\nI expected one of the following:\n\n  * expected end of input")
+
+-}
 parse : String -> Result String (List E)
 parse s =
     case Combine.parse program s of
@@ -224,3 +249,21 @@ parse s =
 
         Err ( _, stream, ms ) ->
             Err <| formatError ms stream
+
+
+{-| Run the following example ...
+
+    import Scheme exposing (test)
+
+    test
+    -- Ok [EList [EIdentifier "define",EList [EIdentifier "derivative",EIdentifier "f",EIdentifier "dx"],EList [EIdentifier "lambda",EList [EIdentifier "x"],EList [EIdentifier "/",EList [EIdentifier "-",EList [EIdentifier "f",EList [EIdentifier "+",EIdentifier "x",EIdentifier "dx"]],EList [EIdentifier "f",EIdentifier "x"]],EIdentifier "dx"]]]]
+
+-}
+test : Result String (List E)
+test =
+    parse """
+  (define (derivative f dx)
+  (lambda (x)
+    (/ (- (f (+ x dx)) (f x))
+       dx)))
+  """

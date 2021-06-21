@@ -1,11 +1,43 @@
 # Changelog
 
+## Version 3.0.2 (2019-01-09)
+
+I hope, it is possible to transfer this back to the community repo. This is a
+simple port of the community/parser-combinators package to elm 0.19.
+Unfortunatelly all operators had to be removed or in other words replaced. And
+lazyness is not supported anymore, these things can only be used by native elm
+modules :.(.
+
+**Basic changes:**
+
+* `*>` was replaced by the new function `ignore`
+* `<*` was replaced by the function `keep`
+* `$>` is now function `onsuccess`
+* while `<?>` is represented by the function `onerror`
+* `lazy` can still be used, but in the manner, that it was replaced by the
+  function:
+
+  ``` elm
+  lazy : (() -> Parser s a) -> Parser s a
+  lazy t =
+      succeed () |> andThen t
+  ```
+
+  which tries to circumvent the bad-recursion problem
+
+* Examples and test have been updated and a new the new function `modifyStream`
+  was added, which I personally use to inject code/macros at compile-time.
+* Some minor optimization of regular expression ...
+
 ## Version 2.0.0 (2017-12-05)
 
-No API change, but a major change. The internal implementation how locations (line/columns) are working has changed.
-Lines were previously 1-based, and columns sometimes had negative values. This is changed into zero-based lines and columns can never have negative values anymore.
+No API change, but a major change. The internal implementation how locations
+(line/columns) are working has changed. Lines were previously 1-based, and
+columns sometimes had negative values. This is changed into zero-based lines and
+columns can never have negative values anymore.
 
-If your application/library did not rely on parse locations, the update is seamless. 
+If your application/library did not rely on parse locations, the update is
+seamless.
 
 ## Version 1.0.0 (2017-02-09)
 
@@ -13,7 +45,9 @@ If your application/library did not rely on parse locations, the update is seaml
 
 ---
 
-> This repository is transferred from [Bogdanp/elm-combine](github.com/Bogdanp/elm-combine). The following changelog statements originate from that repository.
+> This repository is transferred from
+> [Bogdanp/elm-combine](github.com/Bogdanp/elm-combine).
+> The following changelog statements originate from that repository.
 
 
 ---

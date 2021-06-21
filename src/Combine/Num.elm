@@ -1,41 +1,18 @@
-module Combine.Num
-    exposing
-        ( sign
-        , digit
-        , int
-        , float
-        )
+module Combine.Num exposing (sign, digit, int, float)
 
 {-| This module contains Parsers specific to parsing numbers.
 
+
 # Parsers
+
 @docs sign, digit, int, float
+
 -}
 
 import Char
-import Combine exposing (..)
+import Combine exposing (Parser, andThen, fail, map, onerror, onsuccess, optional, or, regex, string, succeed)
 import Combine.Char
 import String
-
-
-unwrap : (String -> Result x res) -> String -> res
-unwrap f s =
-    case f s of
-        Ok res ->
-            res
-
-        Err m ->
-            Debug.crash ("impossible state in Combine.Num.unwrap: " ++ toString m)
-
-
-toInt : String -> Int
-toInt =
-    unwrap String.toInt
-
-
-toFloat : String -> Float
-toFloat =
-    unwrap String.toFloat
 
 
 {-| Parse a numeric sign, returning `1` for positive numbers and `-1`
@@ -44,10 +21,9 @@ for negative numbers.
 sign : Parser s Int
 sign =
     optional 1
-        (choice
-            [ 1 <$ string "+"
-            , -1 <$ string "-"
-            ]
+        (or
+            (string "+" |> onsuccess 1)
+            (string "-" |> onsuccess -1)
         )
 
 
@@ -59,24 +35,34 @@ digit =
         toDigit c =
             Char.toCode c - Char.toCode '0'
     in
-        toDigit <$> Combine.Char.digit <?> "expected a digit"
+    map toDigit Combine.Char.digit |> onerror "expected a digit"
 
 
 {-| Parse an integer.
 -}
 int : Parser s Int
 int =
-    (*)
-        <$> sign
-        <*> (toInt <$> regex "(0|[1-9][0-9]*)")
-        <?> "expected an integer"
+    regex "-?(?:0|[1-9]\\d*)"
+        |> map String.toInt
+        |> andThen unwrap
+        |> onerror "expected an int"
 
 
 {-| Parse a float.
 -}
 float : Parser s Float
 float =
-    ((*) << Basics.toFloat)
-        <$> sign
-        <*> (toFloat <$> regex "(0|[1-9][0-9]*)(\\.[0-9]+)")
-        <?> "expected a float"
+    regex "-?(?:0|[1-9]\\d*)\\.\\d+"
+        |> map String.toFloat
+        |> andThen unwrap
+        |> onerror "expected a float"
+
+
+unwrap : Maybe v -> Parser s v
+unwrap value =
+    case value of
+        Just v ->
+            succeed v
+
+        Nothing ->
+            fail "impossible state in Combine.Num.unwrap"
